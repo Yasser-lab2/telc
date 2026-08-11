@@ -8,6 +8,7 @@
     "build": "tsc --noEmit",
     "typecheck": "tsc --noEmit",
     "db:seed": "tsx src/scripts/seed-plans.ts",
+    "db:demo": "wrangler d1 execute telc-prep --local --file=src/db/seeds/demo.sql",
     "admin:create": "tsx src/scripts/create-admin.ts"
   },
   "dependencies": {

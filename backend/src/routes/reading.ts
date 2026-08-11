@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { nanoid } from 'nanoid';
 import { getDb } from '../db';
@@ -9,11 +9,14 @@ import {
   readingOptions,
   readingQuestions,
   readingUserAnswers,
+  attempts,
 } from '../db/schema';
 import { apiError } from '../lib/http';
 import { getCurrentPlan } from '../lib/subscriptions';
 import { authMiddleware } from '../middleware/auth';
 import type { Env } from '../types';
+import { ensureReadingCatalogItem } from '../lib/reading-catalog';
+import { syncProgressAfterCompletion } from '../lib/progress';
 
 const app = new Hono<Env>();
 app.use('*', authMiddleware);
@@ -43,9 +46,39 @@ app.get('/exams/:id', async (c) => {
       return apiError(c, 403, 'Premium exam requires an active subscription', 'NO_SUBSCRIPTION');
     }
   }
-
   const detail = await loadExamDetail(c.env.DB, exam.id, includeAnswers);
   return c.json({ exam: detail });
+});
+
+app.get('/exams/:id/session', async (c) => {
+  const user = c.get('user');
+  const db = getDb(c.env.DB);
+  const [session] = await db.select().from(readingExamSessions).where(and(
+    eq(readingExamSessions.userId, user.id),
+    eq(readingExamSessions.examId, c.req.param('id')),
+    eq(readingExamSessions.status, 'in_progress'),
+  )).limit(1);
+  if (!session) return c.json({ session: null, answers: [] });
+  const answers = await db.select({
+    questionId: readingUserAnswers.questionId,
+    selectedOptionCode: readingUserAnswers.selectedOptionCode,
+    timeSpentSeconds: readingUserAnswers.timeSpentSeconds,
+  }).from(readingUserAnswers).where(eq(readingUserAnswers.sessionId, session.id));
+  return c.json({ session, answers, serverTime: new Date() });
+});
+
+app.get('/exams/:id/history', async (c) => {
+  const user = c.get('user');
+  const db = getDb(c.env.DB);
+  const [exam] = await db.select({ id: readingExams.id }).from(readingExams).where(eq(readingExams.id, c.req.param('id'))).limit(1);
+  if (!exam) return apiError(c, 404, 'Reading exam not found', 'NOT_FOUND');
+  const history = await db.select({
+    id: readingExamSessions.id, startedAt: readingExamSessions.startedAt, finishedAt: readingExamSessions.finishedAt,
+    scoreObtained: readingExamSessions.scoreObtained, scoreMax: readingExamSessions.scoreMax, percentage: readingExamSessions.percentage,
+  }).from(readingExamSessions).where(and(
+    eq(readingExamSessions.userId, user.id), eq(readingExamSessions.examId, exam.id), eq(readingExamSessions.status, 'completed'),
+  )).orderBy(desc(readingExamSessions.finishedAt)).limit(20);
+  return c.json({ history });
 });
 
 app.post('/exams/:id/start', async (c) => {
@@ -64,6 +97,7 @@ app.post('/exams/:id/start', async (c) => {
       return apiError(c, 403, 'Premium exam requires an active subscription', 'NO_SUBSCRIPTION');
     }
   }
+  const contentItemId = await ensureReadingCatalogItem(c.env.DB, exam);
 
   const [existing] = await db
     .select()
@@ -77,8 +111,14 @@ app.post('/exams/:id/start', async (c) => {
     )
     .limit(1);
 
-  if (existing) return c.json({ session: existing });
+  if (existing) {
+    if (existing.sharedAttemptId) return c.json({ session: existing });
+    const sharedAttempt = await createReadingAttempt(c.env.DB, user.id, contentItemId);
+    await db.update(readingExamSessions).set({ sharedAttemptId: sharedAttempt.id }).where(eq(readingExamSessions.id, existing.id));
+    return c.json({ session: { ...existing, sharedAttemptId: sharedAttempt.id } });
+  }
 
+  const sharedAttempt = await createReadingAttempt(c.env.DB, user.id, contentItemId);
   const session = {
     id: nanoid(),
     userId: user.id,
@@ -86,6 +126,7 @@ app.post('/exams/:id/start', async (c) => {
     startedAt: new Date(),
     status: 'in_progress' as const,
     scoreMax: exam.scoreMax,
+    sharedAttemptId: sharedAttempt.id,
   };
   await db.insert(readingExamSessions).values(session);
   return c.json({ session }, 201);
@@ -127,6 +168,13 @@ app.post('/sessions/:sessionId/answers', async (c) => {
       });
   }
 
+  if (session.sharedAttemptId) {
+    const [shared] = await db.select().from(attempts).where(eq(attempts.id, session.sharedAttemptId)).limit(1);
+    if (shared?.status === 'in_progress') {
+      await db.update(attempts).set({ lastSavedAt: now, stateVersion: shared.stateVersion + 1 }).where(eq(attempts.id, shared.id));
+    }
+  }
+
   return c.json({ ok: true });
 });
 
@@ -139,6 +187,19 @@ app.post('/sessions/:sessionId/submit', async (c) => {
     .where(and(eq(readingExamSessions.id, c.req.param('sessionId')), eq(readingExamSessions.userId, user.id)))
     .limit(1);
   if (!session) return apiError(c, 404, 'Session not found', 'NOT_FOUND');
+  if (session.status === 'abandoned') return apiError(c, 400, 'Session was abandoned', 'BAD_REQUEST');
+
+  const [exam] = await db.select().from(readingExams).where(eq(readingExams.id, session.examId)).limit(1);
+  if (!exam) return apiError(c, 404, 'Reading exam not found', 'NOT_FOUND');
+  let sharedAttemptId = session.sharedAttemptId;
+  let shouldCompleteSharedAttempt = false;
+  if (!sharedAttemptId) {
+    const contentItemId = await ensureReadingCatalogItem(c.env.DB, exam);
+    const shared = await createReadingAttempt(c.env.DB, user.id, contentItemId);
+    sharedAttemptId = shared.id;
+    shouldCompleteSharedAttempt = true;
+    await db.update(readingExamSessions).set({ sharedAttemptId }).where(eq(readingExamSessions.id, session.id));
+  }
 
   const sectionRows = await db
     .select()
@@ -170,8 +231,10 @@ app.post('/sessions/:sessionId/submit', async (c) => {
     return {
       questionId: question.id,
       questionNumber: question.questionNumber,
+      questionText: question.questionText,
       selectedOptionCode: answer?.selectedOptionCode ?? null,
       correctOptionCode: correct?.code ?? null,
+      explanation: correct?.explanation ?? null,
       isCorrect,
       points: isCorrect ? question.points : 0,
       pointsMax: question.points,
@@ -184,10 +247,19 @@ app.post('/sessions/:sessionId/submit', async (c) => {
   }
 
   const percentage = session.scoreMax ? Math.round((score / session.scoreMax) * 100) : 0;
-  await db
-    .update(readingExamSessions)
-    .set({ status: 'completed', finishedAt: new Date(), scoreObtained: score, percentage })
-    .where(eq(readingExamSessions.id, session.id));
+  if (session.status === 'in_progress') {
+    const finishedAt = new Date();
+    await db.update(readingExamSessions).set({ status: 'completed', finishedAt, scoreObtained: score, percentage }).where(and(eq(readingExamSessions.id, session.id), eq(readingExamSessions.status, 'in_progress')));
+    shouldCompleteSharedAttempt = true;
+  }
+  if (shouldCompleteSharedAttempt) {
+    const finishedAt = session.finishedAt ?? new Date();
+    await db.update(attempts).set({
+      status: 'completed', submittedAt: finishedAt, lastSavedAt: finishedAt,
+      scoreObtained: score, scoreMax: session.scoreMax ?? exam.scoreMax, percentage,
+    }).where(and(eq(attempts.id, sharedAttemptId), eq(attempts.status, 'in_progress')));
+    await syncProgressAfterCompletion(c.env.DB, { userId: user.id, attemptId: sharedAttemptId, skill: 'reading', level: exam.level });
+  }
 
   return c.json({
     score,
@@ -197,6 +269,16 @@ app.post('/sessions/:sessionId/submit', async (c) => {
     corrections,
   });
 });
+
+async function createReadingAttempt(dbBinding: D1Database, userId: string, contentItemId: string) {
+  const now = new Date();
+  const attempt = {
+    id: nanoid(), userId, contentItemId, skill: 'reading' as const, mode: 'practice' as const,
+    status: 'in_progress' as const, startedAt: now, lastSavedAt: now, elapsedSeconds: 0, stateVersion: 1,
+  };
+  await getDb(dbBinding).insert(attempts).values(attempt);
+  return attempt;
+}
 
 export async function loadExamDetail(dbBinding: D1Database, examId: string, includeAnswers: boolean) {
   const db = getDb(dbBinding);

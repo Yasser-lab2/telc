@@ -12,3 +12,7 @@ ADMIN_EMAIL = "admin@example.com"
 binding = "DB"
 database_name = "telc-prep"
 database_id = "YOUR_D1_DATABASE_ID"
+
+[[r2_buckets]]
+binding = "PAYMENT_PROOFS"
+bucket_name = "telc-payment-proofs"

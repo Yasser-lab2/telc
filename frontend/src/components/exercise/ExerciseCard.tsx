@@ -3,7 +3,7 @@ import type { Question } from '../../lib/api';
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
 
-export function ExerciseCard({ questions }: { questions: Question[] }) {
+export function ExerciseCard({ questions, onSubmit, isSubmitting = false }: { questions: Question[]; onSubmit?: (answers: Record<string, number>) => Promise<void>; isSubmitting?: boolean }) {
   const [answers, setAnswers] = useState<Record<string, number>>({});
   const [submitted, setSubmitted] = useState(false);
   const score = questions.reduce((total, question) => total + (answers[question.id] === question.answerIndex ? 1 : 0), 0);
@@ -37,7 +37,10 @@ export function ExerciseCard({ questions }: { questions: Question[] }) {
         ))}
       </div>
       <div className="mt-5 flex items-center justify-between">
-        <Button onClick={() => setSubmitted(true)}>Corriger</Button>
+        <Button disabled={isSubmitting || Object.keys(answers).length !== questions.length} onClick={async () => {
+          if (onSubmit) await onSubmit(answers);
+          setSubmitted(true);
+        }}>{isSubmitting ? 'Enregistrement…' : 'Corriger'}</Button>
         {submitted && <span className="font-semibold">Score: {score}/{questions.length}</span>}
       </div>
     </Card>

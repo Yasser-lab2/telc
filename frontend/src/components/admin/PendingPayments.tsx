@@ -5,7 +5,7 @@ import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
 
 type PendingPayment = {
-  payment: { id: string; amountMad: number; createdAt: string };
+  payment: { id: string; amountMad: number; createdAt: string; proofObjectKey: string | null; proofFileName: string | null };
   plan: { name: string };
   user: { email: string; displayName: string };
 };
@@ -44,14 +44,16 @@ export function PendingPayments() {
                 <td>{formatMad(row.payment.amountMad)}</td>
                 <td>{formatDate(row.payment.createdAt)}</td>
                 <td className="flex gap-2 py-2">
+                  {row.payment.proofObjectKey ? <a className="inline-flex min-h-10 items-center rounded-xl border border-border px-3 font-bold text-accent" href={apiClient.paymentProofUrl(row.payment.id)} target="_blank" rel="noreferrer">Voir preuve</a> : <span className="self-center text-xs text-muted">Sans preuve</span>}
                   <Button
+                    disabled={!row.payment.proofObjectKey}
                     onClick={() => {
                       if (confirm(`Approuver ${row.plan.name} pour ${row.user.email} ?`)) approve.mutate(row.payment.id);
                     }}
                   >
                     Approve
                   </Button>
-                  <Button variant="danger" onClick={() => reject.mutate(row.payment.id)}>
+                  <Button variant="danger" onClick={() => { const reason = prompt('Motif du rejet'); if (reason?.trim()) reject.mutate({ id: row.payment.id, reason: reason.trim() }); }}>
                     Reject
                   </Button>
                 </td>
@@ -60,6 +62,7 @@ export function PendingPayments() {
           </tbody>
         </table>
       </div>
+      {(approve.error || reject.error) && <p className="mt-3 text-sm text-red-600">{approve.error?.message ?? reject.error?.message}</p>}
     </Card>
   );
 }

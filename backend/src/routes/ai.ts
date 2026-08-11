@@ -3,11 +3,12 @@ import { Hono } from 'hono';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 import { getDb } from '../db';
-import { aiSubmissions, usageLimits } from '../db/schema';
+import { aiSubmissions, attempts, contentItems, usageLimits, writingDrafts } from '../db/schema';
 import { gradeSchreiben } from '../lib/gemini';
 import { apiError } from '../lib/http';
 import { getCurrentPlan } from '../lib/subscriptions';
 import { todayKey } from '../lib/time';
+import { syncProgressAfterCompletion } from '../lib/progress';
 import { authMiddleware } from '../middleware/auth';
 import { subscriptionMiddleware } from '../middleware/subscription';
 import type { Env } from '../types';
@@ -19,15 +20,31 @@ const gradeSchema = z.object({
   niveau: z.enum(['B1', 'B2']),
   themaType: z.string().min(1).max(80),
   themaContext: z.string().min(1).max(2000),
+  attemptId: z.string().min(1),
 });
 
 app.post('/grade', authMiddleware, subscriptionMiddleware, async (c) => {
   const body = gradeSchema.safeParse(await c.req.json().catch(() => null));
   if (!body.success) return apiError(c, 400, 'Invalid grading payload', 'BAD_REQUEST');
-  if (!c.env.GEMINI_API_KEY) return apiError(c, 500, 'Gemini API key is not configured', 'AI_UNAVAILABLE');
-
   const user = c.get('user');
   const db = getDb(c.env.DB);
+  const [attemptRow] = await db
+    .select({ attempt: attempts, item: contentItems, draft: writingDrafts })
+    .from(attempts)
+    .innerJoin(contentItems, eq(attempts.contentItemId, contentItems.id))
+    .innerJoin(writingDrafts, eq(writingDrafts.attemptId, attempts.id))
+    .where(and(eq(attempts.id, body.data.attemptId), eq(attempts.userId, user.id)))
+    .limit(1);
+  if (!attemptRow || attemptRow.attempt.skill !== 'writing' || attemptRow.item.id !== body.data.themaType) {
+    return apiError(c, 400, 'Invalid writing attempt', 'BAD_REQUEST');
+  }
+  const [existingSubmission] = await db.select().from(aiSubmissions).where(eq(aiSubmissions.attemptId, attemptRow.attempt.id)).limit(1);
+  if (existingSubmission?.aiFeedback) {
+    return c.json({ result: JSON.parse(existingSubmission.aiFeedback), usage: { limit: 0, used: 0 }, attemptId: attemptRow.attempt.id, reused: true });
+  }
+  if (attemptRow.attempt.status !== 'in_progress') return apiError(c, 400, 'Writing attempt is already completed', 'BAD_REQUEST');
+  if (!c.env.GEMINI_API_KEY) return apiError(c, 500, 'Gemini API key is not configured', 'AI_UNAVAILABLE');
+
   const today = todayKey();
   const planRow = await getCurrentPlan(c.env.DB, user.id);
   const limit = planRow?.plan.aiCreditsPerDay ?? 1;
@@ -45,8 +62,8 @@ app.post('/grade', authMiddleware, subscriptionMiddleware, async (c) => {
   try {
     const result = await gradeSchreiben(
       body.data.userText,
-      body.data.niveau,
-      body.data.themaContext,
+      attemptRow.item.level,
+      attemptRow.item.instructions ?? body.data.themaContext,
       c.env.GEMINI_API_KEY,
     );
 
@@ -64,9 +81,12 @@ app.post('/grade', authMiddleware, subscriptionMiddleware, async (c) => {
       },
     });
 
+    const submissionId = nanoid();
+    const submittedAt = new Date();
     await db.insert(aiSubmissions).values({
-      id: nanoid(),
+      id: submissionId,
       userId: user.id,
+      attemptId: attemptRow.attempt.id,
       themaType: body.data.themaType,
       niveau: body.data.niveau,
       userText: body.data.userText,
@@ -79,10 +99,23 @@ app.post('/grade', authMiddleware, subscriptionMiddleware, async (c) => {
       improvedText: result.improved_text,
       feedbackAr: result.feedback_ar,
       latencyMs: Date.now() - started,
-      submittedAt: new Date(),
+      submittedAt,
     });
 
-    return c.json({ result, usage: { limit, used: (usage?.aiCreditsUsed ?? 0) + 1 } });
+    await db.update(writingDrafts).set({
+      text: body.data.userText,
+      wordCount: body.data.userText.trim().split(/\s+/).length,
+      updatedAt: submittedAt,
+    }).where(eq(writingDrafts.attemptId, attemptRow.attempt.id));
+    await db.update(attempts).set({
+      status: 'completed', submittedAt, lastSavedAt: submittedAt,
+      scoreObtained: result.score_total, scoreMax: 100, percentage: Math.max(0, Math.min(100, result.score_total)),
+    }).where(and(eq(attempts.id, attemptRow.attempt.id), eq(attempts.status, 'in_progress')));
+    await syncProgressAfterCompletion(c.env.DB, {
+      userId: user.id, attemptId: attemptRow.attempt.id, skill: 'writing', level: attemptRow.item.level,
+    });
+
+    return c.json({ result, usage: { limit, used: (usage?.aiCreditsUsed ?? 0) + 1 }, attemptId: attemptRow.attempt.id, reused: false });
   } catch (error) {
     console.error(error);
     return apiError(c, 500, 'AI grading failed', 'AI_UNAVAILABLE');

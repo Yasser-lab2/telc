@@ -1,7 +1,7 @@
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { Dispatch, SetStateAction } from 'react';
-import { useMemo, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Link, useParams } from 'react-router-dom';
 import { apiClient, type ReadingQuestion, type ReadingSection, type ReadingSubmitResult } from '../lib/api';
 
 const tabs = [
@@ -15,15 +15,35 @@ const tabs = [
 
 export function LesenExercise() {
   const { themeId = '' } = useParams();
+  const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<(typeof tabs)[number]['id']>('all');
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [sessionId, setSessionId] = useState<string | null>(null);
+  const [startedAt, setStartedAt] = useState<string | null>(null);
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [result, setResult] = useState<ReadingSubmitResult | null>(null);
+  const hydratedSession = useRef<string | null>(null);
   const exam = useQuery({ queryKey: ['reading-exam', themeId], queryFn: () => apiClient.readingExam(themeId) });
+  const activeSession = useQuery({ queryKey: ['reading-active-session', themeId], queryFn: () => apiClient.activeReadingSession(themeId) });
+  const history = useQuery({ queryKey: ['reading-history', themeId], queryFn: () => apiClient.readingHistory(themeId) });
+
+  useEffect(() => {
+    const recovered = activeSession.data?.session;
+    if (!recovered || hydratedSession.current === recovered.id) return;
+    hydratedSession.current = recovered.id;
+    setSessionId(recovered.id);
+    setStartedAt(recovered.startedAt);
+    setAnswers(Object.fromEntries(activeSession.data?.answers.map((answer) => [answer.questionId, answer.selectedOptionCode]) ?? []));
+    setSaveStatus('saved');
+  }, [activeSession.data]);
 
   const start = useMutation({
     mutationFn: () => apiClient.startReadingExam(themeId),
-    onSuccess: (data) => setSessionId(data.session.id),
+    onSuccess: (data: { session: { id: string; startedAt: string; status: string } }) => {
+      hydratedSession.current = data.session.id;
+      setSessionId(data.session.id);
+      setStartedAt(data.session.startedAt);
+    },
   });
   const save = useMutation({
     mutationFn: (id: string) =>
@@ -31,24 +51,49 @@ export function LesenExercise() {
         id,
         Object.entries(answers).map(([questionId, selectedOptionCode]) => ({ questionId, selectedOptionCode })),
       ),
+    onSuccess: () => setSaveStatus('saved'),
+    onError: () => setSaveStatus('error'),
   });
   const submit = useMutation({
     mutationFn: async () => {
-      const id = sessionId ?? (await apiClient.startReadingExam(themeId)).session.id;
+      const started = sessionId ? null : (await apiClient.startReadingExam(themeId)).session;
+      const id = sessionId ?? started!.id;
       setSessionId(id);
-      await apiClient.saveReadingAnswers(
-        id,
-        Object.entries(answers).map(([questionId, selectedOptionCode]) => ({ questionId, selectedOptionCode })),
-      );
+      if (started) setStartedAt(started.startedAt);
+      const answerRows = Object.entries(answers).map(([questionId, selectedOptionCode]) => ({ questionId, selectedOptionCode }));
+      if (answerRows.length) await apiClient.saveReadingAnswers(id, answerRows);
       return apiClient.submitReadingSession(id);
     },
-    onSuccess: setResult,
+    onSuccess: (data) => {
+      setResult(data);
+      queryClient.setQueryData(['reading-active-session', themeId], { session: null, answers: [] });
+      queryClient.invalidateQueries({ queryKey: ['progress'] });
+      queryClient.invalidateQueries({ queryKey: ['reading-history', themeId] });
+    },
   });
+
+  useEffect(() => {
+    if (!sessionId || result || Object.keys(answers).length === 0) return;
+    setSaveStatus('saving');
+    const timer = window.setTimeout(() => save.mutate(sessionId), 900);
+    return () => window.clearTimeout(timer);
+  }, [answers, result, sessionId]);
 
   const visibleSections = useMemo(() => {
     const sections = exam.data?.exam.sections ?? [];
-    return activeTab === 'all' ? sections : sections.filter((section) => section.sectionCode === activeTab);
+    return activeTab === 'all' ? sections : sections.filter((section: ReadingSection) => section.sectionCode === activeTab);
   }, [activeTab, exam.data?.exam.sections]);
+
+  const totalQuestions = exam.data?.exam.sections.reduce((total, section) => total + section.questions.length, 0) ?? 0;
+  const answeredQuestions = Object.keys(answers).length;
+  const secondsRemaining = useCountdown(startedAt, exam.data?.exam.durationMinutes ?? 0, Boolean(sessionId) && !result);
+  const expirySubmitted = useRef(false);
+  useEffect(() => {
+    if (sessionId && secondsRemaining === 0 && !result && !submit.isPending && !expirySubmitted.current) {
+      expirySubmitted.current = true;
+      submit.mutate();
+    }
+  }, [result, secondsRemaining, sessionId, submit.isPending]);
 
   if (exam.isLoading) return <p className="text-slate-400">Chargement...</p>;
   if (!exam.data) return <p className="text-red-300">Examen introuvable.</p>;
@@ -66,6 +111,8 @@ export function LesenExercise() {
               {exam.data.exam.level} · {exam.data.exam.durationMinutes} min · {exam.data.exam.scoreMax} points
             </p>
           </div>
+          <div className="flex flex-wrap items-center gap-3">
+          {sessionId && <span className={`rounded-xl border px-4 py-3 text-sm font-black ${secondsRemaining < 300 ? 'border-red-300 bg-red-50 text-red-700' : 'border-border bg-surface text-ink'}`}>{formatCountdown(secondsRemaining)}</span>}
           <button
             type="button"
             onClick={() => start.mutate()}
@@ -74,6 +121,7 @@ export function LesenExercise() {
           >
             {sessionId ? 'Session ouverte' : 'Commencer'}
           </button>
+          </div>
         </div>
       </section>
 
@@ -93,24 +141,29 @@ export function LesenExercise() {
       </div>
 
       <div className="space-y-5">
-        {visibleSections.map((section) => (
+        {visibleSections.map((section: ReadingSection) => (
           <SectionView key={section.id} section={section} answers={answers} setAnswers={setAnswers} result={result} />
         ))}
       </div>
 
       <section className="rounded-[24px] border border-white/10 bg-[#12151d]/90 p-5 shadow-xl shadow-black/25">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 text-sm"><span className="font-bold text-slate-300">{answeredQuestions}/{totalQuestions} questions répondues</span>{sessionId && <span aria-live="polite" className={`font-bold ${saveStatus === 'error' ? 'text-red-300' : 'text-slate-400'}`}>{saveStatus === 'saving' ? 'Enregistrement…' : saveStatus === 'saved' ? 'Réponses enregistrées' : saveStatus === 'error' ? 'Échec de sauvegarde' : ''}</span>}</div>
         {result ? (
-          <div>
-            <h2 className="text-2xl font-black text-white">Score: {result.score}/{result.scoreMax}</h2>
-            <p className="mt-2 text-slate-400">Pourcentage: {result.percentage}%</p>
-          </div>
+          <ResultSummary result={result} onRetry={async () => {
+            setResult(null); setAnswers({}); setSessionId(null); setStartedAt(null); setSaveStatus('idle');
+            hydratedSession.current = null; expirySubmitted.current = false;
+            await start.mutateAsync();
+          }} />
         ) : (
           <div className="flex flex-col gap-3 sm:flex-row">
             <button
               type="button"
               onClick={async () => {
-                const id = sessionId ?? (await apiClient.startReadingExam(themeId)).session.id;
+                const started = sessionId ? null : (await apiClient.startReadingExam(themeId)).session;
+                const id = sessionId ?? started!.id;
                 setSessionId(id);
+                if (started) setStartedAt(started.startedAt);
+                setSaveStatus('saving');
                 save.mutate(id);
               }}
               className="min-h-11 rounded-2xl border border-white/10 bg-white/[0.04] px-5 text-sm font-bold text-slate-200 hover:bg-white/10"
@@ -119,7 +172,11 @@ export function LesenExercise() {
             </button>
             <button
               type="button"
-              onClick={() => submit.mutate()}
+              onClick={() => {
+                const missing = totalQuestions - answeredQuestions;
+                if (missing > 0 && !window.confirm(`${missing} question(s) sans réponse. Voulez-vous vraiment soumettre ?`)) return;
+                if (window.confirm('Après la soumission, vos réponses ne pourront plus être modifiées. Continuer ?')) submit.mutate();
+              }}
               disabled={submit.isPending}
               className="min-h-11 rounded-2xl border border-teal-300/30 bg-teal-300/10 px-5 text-sm font-black text-teal-100 hover:bg-teal-300/20 disabled:opacity-50"
             >
@@ -128,8 +185,42 @@ export function LesenExercise() {
           </div>
         )}
       </section>
+      <HistoryTrend history={history.data?.history ?? []} />
     </div>
   );
+}
+
+function ResultSummary({ result, onRetry }: { result: ReadingSubmitResult; onRetry: () => Promise<void> }) {
+  const unanswered = result.corrections.filter((item) => !item.selectedOptionCode).length;
+  return <div>
+    <div className="grid gap-4 md:grid-cols-[auto_1fr] md:items-center"><div className="grid h-28 w-28 place-items-center rounded-full border-8 border-teal-300/30 bg-teal-300/10 text-center"><div><p className="text-3xl font-black text-white">{result.percentage}%</p><p className="text-[10px] font-bold uppercase text-slate-400">score</p></div></div><div><h2 className="text-2xl font-black text-white">Résultat: {result.score}/{result.scoreMax}</h2><p className="mt-2 text-sm text-slate-400">{unanswered ? `${unanswered} question(s) sans réponse.` : 'Toutes les questions ont reçu une réponse.'}</p></div></div>
+    <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">{result.sectionSummary.map((section) => <div key={section.sectionCode} className="rounded-xl border border-white/10 bg-black/20 p-3"><p className="text-xs font-bold uppercase text-slate-500">{section.sectionCode}</p><p className="mt-2 text-lg font-black text-white">{section.score}/{section.scoreMax}</p></div>)}</div>
+    <div className="mt-6 flex flex-wrap gap-3"><button type="button" onClick={() => void onRetry()} className="min-h-11 rounded-xl bg-white px-5 text-sm font-black text-slate-950">Réessayer</button><Link to="/dashboard/lesen" className="inline-flex min-h-11 items-center rounded-xl border border-white/10 px-5 text-sm font-bold text-slate-200">Retour aux examens</Link></div>
+  </div>;
+}
+
+function HistoryTrend({ history }: { history: Array<{ id: string; finishedAt: string; percentage: number }> }) {
+  if (!history.length) return null;
+  const chronological = history.slice(0, 5).reverse();
+  return <section className="rounded-[24px] border border-white/10 bg-[#12151d]/90 p-5 shadow-xl shadow-black/25"><div className="flex items-end justify-between"><div><p className="text-xs font-bold uppercase tracking-[0.16em] text-teal-200/70">Historique</p><h2 className="mt-2 text-xl font-black text-white">Évolution du score</h2></div><span className="text-xs text-slate-500">{history.length} tentative(s)</span></div><div className="mt-6 flex h-40 items-end gap-3">{chronological.map((attempt) => <div key={attempt.id} className="flex min-w-0 flex-1 flex-col items-center justify-end gap-2"><span className="text-xs font-black text-slate-300">{Math.round(attempt.percentage)}%</span><div className="w-full max-w-16 rounded-t-lg bg-gradient-to-t from-accent to-teal-300" style={{ height: `${Math.max(6, attempt.percentage)}%` }} /><span className="text-[10px] text-slate-500">{new Date(attempt.finishedAt).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })}</span></div>)}</div></section>;
+}
+
+function useCountdown(startedAt: string | null, durationMinutes: number, active: boolean) {
+  const calculate = () => !startedAt ? durationMinutes * 60 : Math.max(0, durationMinutes * 60 - Math.floor((Date.now() - new Date(startedAt).getTime()) / 1000));
+  const [remaining, setRemaining] = useState(calculate);
+  useEffect(() => {
+    setRemaining(calculate());
+    if (!active) return;
+    const timer = window.setInterval(() => setRemaining(calculate()), 1000);
+    return () => window.clearInterval(timer);
+  }, [active, durationMinutes, startedAt]);
+  return remaining;
+}
+
+function formatCountdown(seconds: number) {
+  const minutes = Math.floor(seconds / 60).toString().padStart(2, '0');
+  const remainder = (seconds % 60).toString().padStart(2, '0');
+  return `${minutes}:${remainder}`;
 }
 
 function SectionView({
@@ -218,11 +309,13 @@ function QuestionView({
           </span>
         )}
       </div>
+      {correction && <p className="mt-3 rounded-xl border border-white/10 bg-white/[0.03] p-3 text-sm text-slate-300">{!correction.selectedOptionCode && <span className="font-bold text-amber-200">Sans réponse. </span>}{correction.explanation ?? 'Aucune explication supplémentaire disponible.'}</p>}
       <div className="mt-3 grid gap-2 md:grid-cols-3">
         {question.options.map((option) => (
           <button
             key={option.id}
             type="button"
+            disabled={Boolean(correction)}
             onClick={() => onChange(option.code)}
             className={`german rounded-xl border px-3 py-2 text-left text-sm transition ${
               value === option.code

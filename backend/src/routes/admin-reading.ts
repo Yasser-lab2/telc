@@ -17,13 +17,14 @@ import {
   validateReadingExamImport,
   type ReadingExamImport,
 } from '../lib/reading-validation';
-import { adminMiddleware } from '../middleware/admin';
+import { adminMiddleware, requirePermission } from '../middleware/admin';
 import { authMiddleware } from '../middleware/auth';
 import { loadExamDetail } from './reading';
 import type { Env } from '../types';
+import { archiveReadingCatalogItem, ensureReadingCatalogItem } from '../lib/reading-catalog';
 
 const app = new Hono<Env>();
-app.use('*', authMiddleware, adminMiddleware);
+app.use('*', authMiddleware, adminMiddleware, requirePermission('content.manage'));
 
 const metadataSchema = z.object({
   title: z.string().min(1),
@@ -55,6 +56,7 @@ app.post('/exams', async (c) => {
     updatedAt: now,
   };
   await getDb(c.env.DB).insert(readingExams).values(exam);
+  await ensureReadingCatalogItem(c.env.DB, exam);
   return c.json({ exam }, 201);
 });
 
@@ -66,10 +68,12 @@ app.put('/exams/:id', async (c) => {
     .update(readingExams)
     .set({ ...body.data, updatedAt: new Date() })
     .where(eq(readingExams.id, c.req.param('id')));
+  await syncCatalog(c.env.DB, c.req.param('id'));
   return c.json({ ok: true });
 });
 
 app.delete('/exams/:id', async (c) => {
+  await archiveReadingCatalogItem(c.env.DB, c.req.param('id'));
   await getDb(c.env.DB).delete(readingExams).where(eq(readingExams.id, c.req.param('id')));
   return c.json({ ok: true });
 });
@@ -84,11 +88,13 @@ app.post('/exams/:id/publish', async (c) => {
   }
 
   await getDb(c.env.DB).update(readingExams).set({ status: 'published', updatedAt: new Date() }).where(eq(readingExams.id, c.req.param('id')));
+  await syncCatalog(c.env.DB, c.req.param('id'));
   return c.json({ ok: true });
 });
 
 app.post('/exams/:id/unpublish', async (c) => {
   await getDb(c.env.DB).update(readingExams).set({ status: 'draft', updatedAt: new Date() }).where(eq(readingExams.id, c.req.param('id')));
+  await syncCatalog(c.env.DB, c.req.param('id'));
   return c.json({ ok: true });
 });
 
@@ -118,6 +124,7 @@ app.put('/exams/:id/content', async (c) => {
   }
 
   await saveFullExam(c.env.DB, examId, validation.data, existing.status);
+  await syncCatalog(c.env.DB, examId);
   return c.json({ ok: true, validation: { ok: true } });
 });
 
@@ -190,6 +197,11 @@ async function saveFullExam(dbBinding: D1Database, examId: string, data: Reading
       }
     }
   }
+}
+
+async function syncCatalog(dbBinding: D1Database, examId: string) {
+  const [exam] = await getDb(dbBinding).select().from(readingExams).where(eq(readingExams.id, examId)).limit(1);
+  if (exam) await ensureReadingCatalogItem(dbBinding, exam);
 }
 
 function detailToImport(detail: Awaited<ReturnType<typeof loadExamDetail>>): ReadingExamImport {

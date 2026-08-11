@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
-import { apiClient } from '../lib/api';
+import { apiClient, type SubscriptionState, type User } from '../lib/api';
 import { useAuthStore } from '../store/authStore';
 
 export function useAuth() {
@@ -22,16 +22,16 @@ export function useAuth() {
 
   const login = useMutation({
     mutationFn: apiClient.login,
-    onSuccess: (data) => {
-      setAuth(data.user, data.subscription);
+    onSuccess: (data: { user: User; subscription?: SubscriptionState }) => {
+      setAuth(data.user, data.subscription ?? null);
       queryClient.invalidateQueries({ queryKey: ['me'] });
     },
   });
 
   const register = useMutation({
     mutationFn: apiClient.register,
-    onSuccess: (data) => {
-      setAuth(data.user, data.subscription);
+    onSuccess: (data: { user: User; subscription?: SubscriptionState }) => {
+      setAuth(data.user, data.subscription ?? null);
       queryClient.invalidateQueries({ queryKey: ['me'] });
     },
   });

@@ -15,6 +15,9 @@ import plansRoutes from './routes/plans';
 import readingRoutes from './routes/reading';
 import schreibenRoutes from './routes/schreiben';
 import usageRoutes from './routes/usage';
+import contentRoutes from './routes/content';
+import progressRoutes from './routes/progress';
+import adminContentRoutes from './routes/admin-content';
 import { authMiddleware } from './middleware/auth';
 import type { Env } from './types';
 
@@ -25,7 +28,7 @@ app.use(
   cors({
     origin: (origin, c) => origin || c.env.APP_URL,
     credentials: true,
-    allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowMethods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowHeaders: ['Content-Type'],
   }),
 );
@@ -74,6 +77,9 @@ app.route('/api/reading', readingRoutes);
 app.route('/api/lesen', lesenRoutes);
 app.route('/api/horen', horenRoutes);
 app.route('/api/schreiben', schreibenRoutes);
+app.route('/api/content', contentRoutes);
+app.route('/api/progress', progressRoutes);
+app.route('/api/admin/content', adminContentRoutes);
 
 app.notFound((c) => c.json({ error: 'Not found', code: 'NOT_FOUND' }, 404));
 

@@ -3,19 +3,19 @@
 @tailwind utilities;
 
 :root {
-  color: #28251d;
-  background: #f7f6f2;
+  color: #17222b;
+  background: #f6f4ee;
   font-family: Inter, ui-sans-serif, system-ui, sans-serif;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   --accent: #01696f;
   --accent-dark: #0c4e54;
-  --bg: #f7f6f2;
-  --surface: #f9f8f5;
-  --border: #d4d1ca;
-  --text: #28251d;
-  --muted: #7a7974;
+  --bg: #f6f4ee;
+  --surface: #fffdf8;
+  --border: #ddd9cf;
+  --text: #17222b;
+  --muted: #667078;
 }
 
 html,
@@ -28,6 +28,31 @@ body {
   margin: 0;
   background: var(--bg);
 }
+
+button, a, input, textarea, select { -webkit-tap-highlight-color: transparent; }
+
+:focus-visible { outline: 3px solid rgba(1, 105, 111, 0.28); outline-offset: 2px; }
+
+.app-canvas {
+  background:
+    radial-gradient(circle at 85% 0%, rgba(1, 105, 111, 0.09), transparent 28rem),
+    radial-gradient(circle at 0% 35%, rgba(214, 161, 74, 0.08), transparent 24rem),
+    var(--bg);
+}
+
+.brand-mark {
+  display: grid; width: 2.5rem; height: 2.5rem; place-items: center; border-radius: 0.8rem;
+  background: var(--accent); color: white; font-weight: 900; box-shadow: 0 8px 24px rgba(1, 105, 111, 0.2);
+}
+
+.nav-link {
+  display: inline-flex; min-height: 2.5rem; align-items: center; border-radius: 0.7rem;
+  padding: 0 0.75rem; color: var(--muted); font-weight: 700; transition: 150ms ease;
+}
+.nav-link:hover { background: rgba(1, 105, 111, 0.07); color: var(--text); }
+
+.field { min-height: 2.75rem; width: 100%; border-radius: 0.75rem; border: 1px solid var(--border); background: white; padding: 0 0.75rem; font-size: 0.875rem; outline: none; }
+.field:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(1, 105, 111, 0.15); }
 
 * {
   box-sizing: border-box;

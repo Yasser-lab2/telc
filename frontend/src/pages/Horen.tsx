@@ -10,7 +10,7 @@ export function Horen() {
       <h1 className="text-3xl font-bold">Hören</h1>
       <p className="mt-2 text-muted">Écoute l’audio puis réponds aux questions.</p>
       <div className="mt-6 grid gap-4 md:grid-cols-2">
-        {audios.data?.audios.map((audio) => (
+        {audios.data?.audios.map((audio: { id: string; title: string; niveau: string; audioUrl: string }) => (
           <Link key={audio.id} to={`/dashboard/horen/${audio.id}`}>
             <Card className="h-full hover:border-accent">
               <p className="text-sm text-muted">{audio.niveau}</p>

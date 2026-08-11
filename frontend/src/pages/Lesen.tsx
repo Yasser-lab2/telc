@@ -79,7 +79,7 @@ export function Lesen() {
 
       {count > 0 && (
         <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          {exams.data?.exams.map((exam, index) => (
+          {exams.data?.exams.map((exam: ReadingExamListItem, index: number) => (
             <ExamCard key={exam.id} exam={exam} index={index} />
           ))}
         </section>

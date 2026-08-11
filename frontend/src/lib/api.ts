@@ -1,11 +1,16 @@
 const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8787';
 
+export type AppRole = 'student' | 'support' | 'content_editor' | 'admin';
+export type Permission = 'admin.access' | 'analytics.view' | 'payments.review' | 'users.view' | 'users.manage' | 'users.roles' | 'subscriptions.manage' | 'content.manage';
+
 export type User = {
   id: string;
   email: string;
   displayName: string;
   niveau: 'B1' | 'B2' | 'B1_B2';
-  role: 'student' | 'admin';
+  role: AppRole;
+  emailVerified: boolean;
+  permissions: Permission[];
 };
 
 export type SubscriptionState =
@@ -31,6 +36,21 @@ export type Plan = {
   priceMad: number;
   aiCreditsPerDay: number;
   isActive: boolean;
+};
+
+export type UserPreferences = {
+  userId?: string;
+  locale: 'fr' | 'de';
+  emailStudyReminders: boolean;
+  emailProductUpdates: boolean;
+  updatedAt?: string;
+};
+
+export type AdminLearningPayload = {
+  skill: 'listening' | 'writing'; title: string; level: 'B1' | 'B2'; status: 'draft' | 'published';
+  accessStatus: 'free' | 'premium'; difficulty: 'introductory' | 'standard' | 'advanced'; durationMinutes?: number;
+  context?: string; audioUrl?: string; transcript?: string; maxPlays?: number;
+  questions?: Array<{ prompt: string; explanation?: string; correctCode: string; options: Array<{ code: string; label: string }> }>;
 };
 
 export type Question = {
@@ -99,8 +119,10 @@ export type ReadingSubmitResult = {
   corrections: Array<{
     questionId: string;
     questionNumber: number;
+    questionText: string;
     selectedOptionCode: string | null;
     correctOptionCode: string | null;
+    explanation: string | null;
     isCorrect: boolean;
     points: number;
     pointsMax: number;
@@ -125,31 +147,85 @@ export async function api<T>(path: string, options: RequestInit = {}): Promise<T
   return data as T;
 }
 
+async function apiForm<T>(path: string, body: FormData): Promise<T> {
+  const response = await fetch(`${API_URL}${path}`, { method: 'POST', body, credentials: 'include' });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.error ?? 'Request failed');
+  return data as T;
+}
+
 export const apiClient = {
   me: () => api<MeResponse>('/api/me'),
-  register: (payload: { email: string; password: string; displayName: string; niveau: string }) =>
-    api<MeResponse>('/api/auth/register', { method: 'POST', body: JSON.stringify(payload) }),
+  register: (payload: { email: string; password: string; displayName: string; niveau: string; acceptTerms: true }) =>
+    api<{ user: User; subscription?: SubscriptionState; verificationRequired: boolean; devVerificationUrl?: string | null }>('/api/auth/register', { method: 'POST', body: JSON.stringify(payload) }),
   login: (payload: { email: string; password: string }) =>
-    api<MeResponse>('/api/auth/login', { method: 'POST', body: JSON.stringify(payload) }),
+    api<{ user: User; subscription?: SubscriptionState }>('/api/auth/login', { method: 'POST', body: JSON.stringify(payload) }),
   logout: () => api<{ ok: true }>('/api/auth/logout', { method: 'POST' }),
+  updateProfile: (payload: { displayName: string; niveau: 'B1' | 'B2' | 'B1_B2' }) =>
+    api<{ user: User }>('/api/auth/profile', { method: 'PATCH', body: JSON.stringify(payload) }),
+  preferences: () => api<{ preferences: UserPreferences }>('/api/auth/preferences'),
+  updatePreferences: (payload: UserPreferences) => api<{ preferences: UserPreferences }>('/api/auth/preferences', { method: 'PATCH', body: JSON.stringify(payload) }),
+  exportAccount: () => api<Record<string, unknown>>('/api/auth/account/export'),
+  deleteAccount: (password: string) => api<{ ok: true }>('/api/auth/account', { method: 'DELETE', body: JSON.stringify({ password }) }),
+  confirmEmail: (token: string) => api<{ ok: true }>('/api/auth/verification/confirm', { method: 'POST', body: JSON.stringify({ token }) }),
+  resendVerification: () => api<{ ok: true; alreadyVerified: boolean; devVerificationUrl?: string | null }>('/api/auth/verification/resend', { method: 'POST' }),
+  forgotPassword: (email: string) => api<{ ok: true; message: string; devResetUrl?: string | null }>('/api/auth/password/forgot', { method: 'POST', body: JSON.stringify({ email }) }),
+  resetPassword: (token: string, password: string) => api<{ ok: true }>('/api/auth/password/reset', { method: 'POST', body: JSON.stringify({ token, password }) }),
+  sessions: () => api<{ sessions: Array<{ id: string; createdAt: string; expiresAt: string; userAgent: string | null; ip: string | null; current: boolean }> }>('/api/auth/sessions'),
+  revokeSession: (id: string) => api<{ ok: true; currentRevoked: boolean }>(`/api/auth/sessions/${id}`, { method: 'DELETE' }),
+  revokeAllSessions: () => api<{ ok: true }>('/api/auth/sessions/revoke-all', { method: 'POST' }),
   plans: () => api<{ plans: Plan[] }>('/api/plans'),
   createPayment: (planId: string) =>
-    api<{ paymentId: string; whatsappUrl: string }>('/api/payments/manual/create', {
+    api<{ paymentId: string; whatsappUrl: string; reused: boolean }>('/api/payments/manual/create', {
       method: 'POST',
       body: JSON.stringify({ planId }),
     }),
   myPayments: () => api<{ payments: Array<Record<string, unknown>> }>('/api/payments/manual/my'),
+  uploadPaymentProof: (id: string, file: File) => { const body = new FormData(); body.append('proof', file); return apiForm<{ ok: true; fileName: string }>(`/api/payments/manual/${id}/proof`, body); },
   adminPayments: () => api<{ payments: Array<Record<string, unknown>> }>('/api/admin/payments/pending'),
   adminStats: () => api<Record<string, number>>('/api/admin/stats'),
-  approvePayment: (id: string) => api<{ ok: true; expiresAt: string }>(`/api/admin/payments/${id}/approve`, { method: 'POST' }),
-  rejectPayment: (id: string) => api<{ ok: true }>(`/api/admin/payments/${id}/reject`, { method: 'POST' }),
+  adminUsers: (q = '') => api<{ users: Array<{
+    id: string; email: string; displayName: string; niveau: 'B1' | 'B2' | 'B1_B2'; role: AppRole;
+    createdAt: string; lastSeenAt: string; completedAttempts: number;
+    subscription: { id: string; status: string; expiresAt: string; planName: string } | null;
+  }> }>(`/api/admin/users${q ? `?q=${encodeURIComponent(q)}` : ''}`),
+  adminUserDetail: (id: string) => api<{
+    user: { id: string; email: string; displayName: string; niveau: 'B1' | 'B2' | 'B1_B2'; role: AppRole; createdAt: string; lastSeenAt: string };
+    subscriptions: Array<{ subscription: { id: string; status: string; expiresAt: string }; plan: { name: string } }>;
+    payments: Array<{ payment: { id: string; status: string; amountMad: number; createdAt: string }; plan: { name: string } }>;
+    progress: Array<{ id: string; skill: string; level: string; completedAttempts: number; averagePercentage: number | null }>;
+    recentActivity: Array<{ id: string; occurredAt: string; eventType: string; skill: string; title: string; percentage: number | null }>;
+  }>(`/api/admin/users/${id}`),
+  updateAdminUser: (id: string, payload: { displayName?: string; niveau?: 'B1' | 'B2' | 'B1_B2'; role?: AppRole }) => api<{ ok: true }>(`/api/admin/users/${id}`, { method: 'PATCH', body: JSON.stringify(payload) }),
+  extendAdminSubscription: (id: string, days: number, planId = 'monthly') => api<{ ok: true; expiresAt: string }>(`/api/admin/users/${id}/subscription/extend`, { method: 'POST', body: JSON.stringify({ days, planId }) }),
+  cancelAdminSubscription: (id: string) => api<{ ok: true }>(`/api/admin/users/${id}/subscription/cancel`, { method: 'POST' }),
+  adminLearningContent: () => api<{ items: Array<{ id: string; title: string; skill: string; level: 'B1' | 'B2'; status: 'draft' | 'published' | 'archived'; accessStatus: 'free' | 'premium'; difficulty: string }> }>('/api/admin/content'),
+  adminLearningDetail: (id: string) => api<{ item: Record<string, unknown> & { id: string; skill: string; title: string; level: 'B1' | 'B2'; status: 'draft' | 'published' | 'archived'; accessStatus: 'free' | 'premium'; difficulty: 'introductory' | 'standard' | 'advanced'; durationMinutes: number | null; instructions: string | null; metadata: unknown; sections: Array<{ body: string | null; questions: Array<{ prompt: string; explanation: string | null; options: Array<{ code: string; label: string; isCorrect: boolean }> }> }>; media: Array<{ role: string; asset: { sourceUrl: string | null } }> } }>(`/api/admin/content/${id}`),
+  createAdminLearningContent: (payload: AdminLearningPayload) => api<{ item: { id: string } }>('/api/admin/content', { method: 'POST', body: JSON.stringify(payload) }),
+  updateAdminLearningContent: (id: string, payload: AdminLearningPayload) => api<{ item: { id: string } }>(`/api/admin/content/${id}`, { method: 'PUT', body: JSON.stringify(payload) }),
+  archiveAdminLearningContent: (id: string) => api<{ ok: true }>(`/api/admin/content/${id}/archive`, { method: 'POST' }),
+  approvePayment: (id: string) => api<{ ok: true; expiresAt: string; alreadyProcessed: boolean }>(`/api/admin/payments/${id}/approve`, { method: 'POST' }),
+  rejectPayment: ({ id, reason }: { id: string; reason: string }) => api<{ ok: true; alreadyProcessed: boolean }>(`/api/admin/payments/${id}/reject`, { method: 'POST', body: JSON.stringify({ reason }) }),
+  paymentProofUrl: (id: string) => `${API_URL}/api/admin/payments/${id}/proof`,
   usage: () => api<{ limit: number; used: number; remaining: number; date: string }>('/api/usage'),
+  progress: () => api<{
+    progress: Array<{ id: string; skill: string; level: string; completedAttempts: number; averagePercentage: number | null; bestPercentage: number | null }>;
+    recentActivity: Array<{ id: string; skill: string; score: number | null; title: string; contentItemId: string; occurredAt: string }>;
+  }>('/api/progress'),
   lesen: () => api<{ themes: Array<{ id: string; title: string; niveau: string }> }>('/api/lesen'),
   lesenTheme: (id: string) =>
     api<{ theme: { id: string; title: string; niveau: string; text: string; questions: Question[] } }>(`/api/lesen/${id}`),
   readingExams: () => api<{ exams: ReadingExamListItem[] }>('/api/reading/exams'),
   readingExam: (id: string) => api<{ exam: ReadingExamDetail }>(`/api/reading/exams/${id}`),
-  startReadingExam: (id: string) => api<{ session: { id: string } }>(`/api/reading/exams/${id}/start`, { method: 'POST' }),
+  activeReadingSession: (id: string) => api<{
+    session: { id: string; startedAt: string; status: string } | null;
+    answers: Array<{ questionId: string; selectedOptionCode: string; timeSpentSeconds: number | null }>;
+    serverTime?: string;
+  }>(`/api/reading/exams/${id}/session`),
+  readingHistory: (id: string) => api<{ history: Array<{
+    id: string; startedAt: string; finishedAt: string; scoreObtained: number; scoreMax: number; percentage: number;
+  }> }>(`/api/reading/exams/${id}/history`),
+  startReadingExam: (id: string) => api<{ session: { id: string; startedAt: string; status: string } }>(`/api/reading/exams/${id}/start`, { method: 'POST' }),
   saveReadingAnswers: (sessionId: string, answers: Array<{ questionId: string; selectedOptionCode: string }>) =>
     api<{ ok: true }>(`/api/reading/sessions/${sessionId}/answers`, {
       method: 'POST',
@@ -172,14 +248,34 @@ export const apiClient = {
   deleteAdminReadingExam: (id: string) => api<{ ok: true }>(`/api/admin/reading/exams/${id}`, { method: 'DELETE' }),
   horen: () => api<{ audios: Array<{ id: string; title: string; niveau: string; audioUrl: string }> }>('/api/horen'),
   horenAudio: (id: string) =>
-    api<{ audio: { id: string; title: string; niveau: string; audioUrl: string; transcript: string; questions: Question[] } }>(
+    api<{ audio: { id: string; title: string; niveau: string; audioUrl: string; maxPlays: number; questions: Array<{ id: string; prompt: string; options: Array<{ code: string; label: string }> }> } }>(
       `/api/horen/${id}`,
     ),
+  activeListeningSession: (id: string) => api<{
+    attempt: { id: string } | null; answers: Array<{ questionId: string; selectedOptionCode: string | null }>;
+    playCount: number; maxPlays: number;
+  }>(`/api/horen/${id}/session`),
+  startListeningAttempt: (id: string) =>
+    api<{ attempt: { id: string } }>(`/api/horen/${id}/start`, { method: 'POST' }),
+  saveListeningAnswers: (sessionId: string, answers: Array<{ questionId: string; selectedOptionCode: string }>) =>
+    api<{ ok: true }>(`/api/horen/sessions/${sessionId}/answers`, { method: 'POST', body: JSON.stringify({ answers }) }),
+  registerListeningPlay: (sessionId: string) => api<{ playCount: number; maxPlays: number; remaining: number }>(`/api/horen/sessions/${sessionId}/play`, { method: 'POST' }),
+  submitListeningAttempt: (sessionId: string) =>
+    api<{ score: number; scoreMax: number; percentage: number; transcript: string; corrections: Array<{
+      questionId: string; questionText: string; selectedOptionCode: string | null; correctOptionCode: string | null;
+      explanation: string | null; isCorrect: boolean;
+    }> }>(
+      `/api/horen/sessions/${sessionId}/submit`, { method: 'POST' },
+    ),
+  listeningHistory: (id: string) => api<{ history: Array<{ id: string; submittedAt: string; score: number; scoreMax: number; percentage: number }> }>(`/api/horen/${id}/history`),
   schreiben: () => api<{ types: Array<{ id: string; title: string; niveau: string; context: string }> }>('/api/schreiben'),
   schreibenType: (id: string) =>
     api<{ type: { id: string; title: string; niveau: 'B1' | 'B2'; context: string } }>(`/api/schreiben/${id}`),
-  grade: (payload: { userText: string; niveau: 'B1' | 'B2'; themaType: string; themaContext: string }) =>
-    api<{ result: GradingResult; usage: { limit: number; used: number } }>('/api/ai/grade', {
+  startWritingDraft: (id: string) => api<{ attempt: { id: string; status: string }; draft: { text: string; wordCount: number; updatedAt: string } }>(`/api/schreiben/${id}/draft`, { method: 'POST' }),
+  saveWritingDraft: (attemptId: string, text: string) => api<{ ok: true; savedAt: string; wordCount: number }>(`/api/schreiben/drafts/${attemptId}`, { method: 'PUT', body: JSON.stringify({ text }) }),
+  writingHistory: () => api<{ submissions: Array<{ attemptId: string; contentItemId: string; title: string; level: string; submittedAt: string; percentage: number; userText: string; feedback: GradingResult }> }>('/api/schreiben/history/my'),
+  grade: (payload: { userText: string; niveau: 'B1' | 'B2'; themaType: string; themaContext: string; attemptId: string }) =>
+    api<{ result: GradingResult; usage: { limit: number; used: number }; attemptId: string; reused: boolean }>('/api/ai/grade', {
       method: 'POST',
       body: JSON.stringify(payload),
     }),

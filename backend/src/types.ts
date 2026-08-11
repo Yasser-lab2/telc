@@ -3,7 +3,10 @@ import type { User } from './db/schema';
 export type Env = {
   Bindings: {
     DB: D1Database;
+    PAYMENT_PROOFS: R2Bucket;
     GEMINI_API_KEY?: string;
+    RESEND_API_KEY?: string;
+    EMAIL_FROM?: string;
     SESSION_SECRET: string;
     ADMIN_EMAIL: string;
     WHATSAPP_NUMBER: string;

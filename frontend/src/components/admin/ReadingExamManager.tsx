@@ -59,7 +59,7 @@ export function ReadingExamManager() {
 
   const create = useMutation({
     mutationFn: apiClient.createAdminReadingExam,
-    onSuccess: (data) => {
+    onSuccess: (data: { exam: ReadingExamListItem }) => {
       setSelected(data.exam);
       setForm({
         title: data.exam.title,
@@ -130,7 +130,7 @@ export function ReadingExamManager() {
               </tr>
             </thead>
             <tbody>
-              {(exams.data?.exams ?? []).map((exam) => (
+              {(exams.data?.exams ?? []).map((exam: ReadingExamListItem) => (
                 <tr key={exam.id} className="border-t border-border">
                   <td className="py-3">{exam.title}</td>
                   <td>{exam.level}</td>
@@ -184,19 +184,19 @@ function ReadingJsonEditor({ exam }: { exam: ReadingExamListItem }) {
           accessStatus: detail.data.exam.accessStatus,
           status: detail.data.exam.status,
         },
-        sections: detail.data.exam.sections.map((section) => ({
+        sections: detail.data.exam.sections.map((section: import('../../lib/api').ReadingSection) => ({
           code: section.sectionCode,
           title: section.title,
           instructions: section.instructions ?? '',
           mainText: section.mainText ?? '',
           exerciseType: section.exerciseType,
           extraData: section.extraData ?? {},
-          questions: section.questions.map((question) => ({
+          questions: section.questions.map((question: import('../../lib/api').ReadingQuestion) => ({
             number: question.questionNumber,
             text: question.questionText,
             points: question.points,
             answerType: question.answerType,
-            options: question.options.map((option) => ({
+            options: question.options.map((option: import('../../lib/api').ReadingOption) => ({
               code: option.code,
               text: option.text,
               isCorrect: Boolean(option.isCorrect),
@@ -219,7 +219,7 @@ function ReadingJsonEditor({ exam }: { exam: ReadingExamListItem }) {
       queryClient.invalidateQueries({ queryKey: ['admin-reading-exams'] });
       queryClient.invalidateQueries({ queryKey: ['admin-reading-exam', exam.id] });
     },
-    onError: (error) => setMessage(error.message),
+    onError: (error: Error) => setMessage(error.message),
   });
 
   return (

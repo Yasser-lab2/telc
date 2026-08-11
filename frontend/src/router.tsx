@@ -17,6 +17,10 @@ import { Register } from './pages/Register';
 import { Schreiben } from './pages/Schreiben';
 import { SchreibenEditor } from './pages/SchreibenEditor';
 import { Simulation } from './pages/Simulation';
+import { ForgotPassword } from './pages/ForgotPassword';
+import { ResetPassword } from './pages/ResetPassword';
+import { VerifyEmail } from './pages/VerifyEmail';
+import { Legal } from './pages/Legal';
 
 function ProtectedRoute({ children, requireSubscription = false }: { children: JSX.Element; requireSubscription?: boolean }) {
   const { user, subscription, isLoading } = useAuth();
@@ -30,7 +34,7 @@ function AdminRoute({ children }: { children: JSX.Element }) {
   const { user, isLoading } = useAuth();
   if (isLoading) return <LoadingSpinner />;
   if (!user) return <Navigate to="/login" replace />;
-  if (user.role !== 'admin') return <Navigate to="/dashboard" replace />;
+  if (!user.permissions.includes('admin.access')) return <Navigate to="/dashboard" replace />;
   return children;
 }
 
@@ -39,6 +43,10 @@ export const router = createBrowserRouter([
   { path: '/pricing', element: <Pricing /> },
   { path: '/login', element: <Login /> },
   { path: '/register', element: <Register /> },
+  { path: '/forgot-password', element: <ForgotPassword /> },
+  { path: '/reset-password', element: <ResetPassword /> },
+  { path: '/verify-email', element: <VerifyEmail /> },
+  { path: '/legal/:document', element: <Legal /> },
   {
     path: '/payment',
     element: (
@@ -50,19 +58,19 @@ export const router = createBrowserRouter([
   {
     path: '/dashboard',
     element: (
-      <ProtectedRoute requireSubscription>
+      <ProtectedRoute>
         <DashboardLayout />
       </ProtectedRoute>
     ),
     children: [
-      { index: true, element: <Dashboard /> },
-      { path: 'lesen', element: <Lesen /> },
-      { path: 'lesen/:themeId', element: <LesenExercise /> },
-      { path: 'horen', element: <Horen /> },
-      { path: 'horen/:audioId', element: <HorenExercise /> },
-      { path: 'schreiben', element: <Schreiben /> },
-      { path: 'schreiben/:typeId', element: <SchreibenEditor /> },
-      { path: 'simulation', element: <Simulation /> },
+      { index: true, element: <ProtectedRoute requireSubscription><Dashboard /></ProtectedRoute> },
+      { path: 'lesen', element: <ProtectedRoute requireSubscription><Lesen /></ProtectedRoute> },
+      { path: 'lesen/:themeId', element: <ProtectedRoute requireSubscription><LesenExercise /></ProtectedRoute> },
+      { path: 'horen', element: <ProtectedRoute requireSubscription><Horen /></ProtectedRoute> },
+      { path: 'horen/:audioId', element: <ProtectedRoute requireSubscription><HorenExercise /></ProtectedRoute> },
+      { path: 'schreiben', element: <ProtectedRoute requireSubscription><Schreiben /></ProtectedRoute> },
+      { path: 'schreiben/:typeId', element: <ProtectedRoute requireSubscription><SchreibenEditor /></ProtectedRoute> },
+      { path: 'simulation', element: <ProtectedRoute requireSubscription><Simulation /></ProtectedRoute> },
       { path: 'profile', element: <Profile /> },
     ],
   },

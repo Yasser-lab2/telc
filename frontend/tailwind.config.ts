@@ -12,6 +12,8 @@ export default {
         border: '#D4D1CA',
         text: '#28251D',
         muted: '#7A7974',
+        ink: '#17222B',
+        accentSoft: '#DCEFED',
         dark: '#08090C',
       },
       fontFamily: {
