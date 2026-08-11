@@ -22,7 +22,7 @@ export function Pricing() {
   return (
     <div className="app-canvas min-h-screen" dir="ltr">
       <Navbar />
-      <main className="mx-auto max-w-7xl px-4 py-16 md:px-6">
+      <main id="main-content" tabIndex={-1} className="mx-auto max-w-7xl px-4 py-16 md:px-6">
         <div className="max-w-2xl"><p className="text-xs font-extrabold uppercase tracking-[0.18em] text-accent">Offres simples et transparentes</p><h1 className="mt-3 text-4xl font-black tracking-tight text-ink md:text-5xl">Choisissez votre durée de préparation.</h1><p className="mt-4 text-lg leading-8 text-muted">Paiement par virement CIH, suivi sur WhatsApp, puis activation après vérification.</p></div>
         <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {plans.data?.plans.map((plan: Plan) => (

@@ -15,6 +15,7 @@ export type Env = {
   };
   Variables: {
     user: User;
+    requestId: string;
   };
 };
 

@@ -46,7 +46,7 @@ export function Legal() {
   return (
     <div className="app-canvas min-h-screen" dir="ltr">
       <Navbar />
-      <main className="mx-auto max-w-4xl px-4 py-12 md:px-6 md:py-16">
+      <main id="main-content" tabIndex={-1} className="mx-auto max-w-4xl px-4 py-12 md:px-6 md:py-16">
         <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-accent">Informations légales</p>
         <h1 className="mt-3 text-3xl font-black md:text-4xl">{page.title}</h1>
         <p className="mt-3 text-sm text-muted">Version du 10 août 2026</p>

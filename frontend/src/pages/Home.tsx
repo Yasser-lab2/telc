@@ -13,7 +13,7 @@ export function Home() {
   return (
     <div className="app-canvas min-h-screen" dir="ltr">
       <Navbar />
-      <main>
+      <main id="main-content" tabIndex={-1}>
         <section className="mx-auto grid max-w-7xl items-center gap-12 px-4 py-16 md:px-6 lg:grid-cols-[1.08fr_0.92fr] lg:py-24">
           <div>
             <span className="inline-flex rounded-full border border-accent/20 bg-accentSoft px-4 py-2 text-xs font-extrabold uppercase tracking-[0.18em] text-accentDark">Préparation TELC B1 · B2</span>

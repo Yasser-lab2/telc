@@ -7,8 +7,8 @@
 
 ## Implementation status
 
-- **Phase 0 — In progress:** shared visual tokens, responsive learner navigation, localization foundation and CI baseline started on 2026-08-07. Home, pricing, authentication and the primary dashboard were migrated to the professional light design on 2026-08-08; fake dashboard progress/activity was removed pending real attempt data. The additive shared content, media, attempt, progress and activity schema was introduced in migration `0003_learning_core.sql` on 2026-08-08.
-- **Phase 1 — In progress:** the shared content repository/read API was added and the existing listening and writing exercises were migrated from hard-coded runtime data into D1 in migration `0004_seed_listening_writing.sql`. The reading JSON import/editor remains supported.
+- **Phase 0 — Complete:** shared visual tokens, responsive learner navigation, localization foundation and CI baseline started on 2026-08-07. Home, pricing, authentication and the primary dashboard were migrated to the professional light design on 2026-08-08; fake dashboard progress/activity was removed pending real attempt data. The additive shared content, media, attempt, progress and activity schema was introduced in migration `0003_learning_core.sql` on 2026-08-08.
+- **Phase 1 — Complete:** the shared content repository/read API was added and the existing listening and writing exercises were migrated from hard-coded runtime data into D1 in migration `0004_seed_listening_writing.sql`. The reading JSON import/editor remains supported.
 - Persistent listening attempts, answer saving, server-side scoring, idempotent progress/activity updates and the first real dashboard progress read model were added on 2026-08-08.
 - Persistent writing drafts, AI-linked shared attempts, revision creation, submission history and immediate progress refresh were added on 2026-08-08.
 - Reading sessions were bridged into shared attempts, progress and activity on 2026-08-08 without removing or changing the JSON exam import/editor.
@@ -26,11 +26,13 @@
 - Account-level language, study-reminder and product-update preferences gained persistent self-service settings on 2026-08-09.
 - Versioned legal consent plus public privacy, terms and refund-policy flows were added on 2026-08-10; operator identity, retention periods and CNDP formalities remain launch blockers requiring professional validation.
 - Role-based access control was expanded on 2026-08-11 with least-privilege support and content-editor roles, centralized API permissions and permission-aware administration navigation.
-- **Phase 2 — In progress:** commercial operations and account security are implemented; profile editing, legal/privacy flows, operational analytics and broader RBAC hardening remain. Phases 3–4 have not started.
+- The admin operational dashboard gained explicit 7-day and 30-day acquisition, learning, subscription, payment, AI latency and content-pipeline metrics on 2026-08-11.
+- Structured request logging, traceable error responses, dependency-aware health checks, a UI error boundary, automated RBAC/exam/health/accessibility tests, migration rehearsal and a recovery runbook were added on 2026-08-11.
+- **Phase 2 — Engineering complete:** the repository implementation is complete. Production release approval remains conditional on operator identity/contact details, CNDP formalities, final legal review, external alert destinations and recorded manual WCAG/responsive QA. Phases 3–4 have not started.
 
 ## 1. Executive summary
 
-TELC Prep is an existing MVP that combines reading, listening, and AI-assisted writing practice with subscription access and manual Moroccan payment handling. Its strongest implemented flow is the database-backed reading exam system. Listening and writing content still comes from hard-coded files, progress shown on the dashboard is largely static, and simulation, detailed user administration, recovery, analytics, and content management remain incomplete.
+TELC Prep is now a database-backed learning and commercial platform combining reading, listening and AI-assisted writing practice with persistent attempts, measurable progress, content administration, account security, role-based operations and manual Moroccan payment handling. Phase 2 engineering is complete; full simulations, readiness guidance, speaking practice and growth work remain in Phases 3–4.
 
 The next version should become a credible, professional exam-preparation product: a consistent multilingual interface, authentic timed practice, persistent learner progress, actionable correction and review, a unified content-management system, and a reliable commercial/admin workflow.
 

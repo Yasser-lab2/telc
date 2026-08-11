@@ -25,7 +25,7 @@ export function Login() {
   return (
     <div className="app-canvas min-h-screen" dir="ltr">
       <Navbar />
-      <main className="mx-auto max-w-md px-4 py-16">
+      <main id="main-content" tabIndex={-1} className="mx-auto max-w-md px-4 py-16">
         <Card className="p-7 md:p-8">
           <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-accent">Bon retour</p>
           <h1 className="mt-3 text-3xl font-black text-ink">Connexion</h1>

@@ -89,6 +89,8 @@ npm run typecheck
 npm run build
 ```
 
+Production release, monitoring and D1 recovery procedures are documented in [`OPERATIONS.md`](./OPERATIONS.md).
+
 Security checks used for P0:
 
 ```bash

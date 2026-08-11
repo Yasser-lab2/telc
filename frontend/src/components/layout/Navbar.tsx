@@ -6,8 +6,16 @@ import { useI18n } from '../../lib/i18n';
 export function Navbar() {
   const { user, logout } = useAuth();
   const { locale, setLocale, t } = useI18n();
+  function focusMain(event: React.MouseEvent<HTMLAnchorElement>) {
+    const main = document.querySelector('main');
+    if (!main) return;
+    event.preventDefault();
+    main.setAttribute('tabindex', '-1');
+    main.focus();
+  }
   return (
     <header className="sticky top-0 z-30 border-b border-border/80 bg-bg/90 backdrop-blur-xl">
+      <a className="skip-link" href="#main-content" onClick={focusMain}>Aller au contenu principal</a>
       <nav aria-label={t('navigation')} className="mx-auto flex min-h-16 max-w-7xl items-center justify-between gap-4 px-4 md:px-6">
         <Link to="/" className="flex items-center gap-3 text-ink">
           <span className="brand-mark">T</span>

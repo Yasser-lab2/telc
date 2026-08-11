@@ -3,7 +3,7 @@ import type { ApiErrorCode, Env } from '../types';
 import { permissionsForRole } from './rbac';
 
 export function apiError(c: Context<Env>, status: 400 | 401 | 403 | 404 | 429 | 500, error: string, code: ApiErrorCode) {
-  return c.json({ error, code }, status);
+  return c.json({ error, code, requestId: c.get('requestId') || undefined }, status);
 }
 
 export function publicUser(user: {

@@ -118,20 +118,47 @@ app.get('/payments/:id/proof', requirePermission('payments.review'), async (c) =
 app.get('/stats', requirePermission('analytics.view'), async (c) => {
   const db = getDb(c.env.DB);
   const now = new Date();
-  const [[totalUsers], [activeSubs], [expiredSubs], [trialSubs], [aiToday]] = await Promise.all([
+  const sevenDaysAgo = new Date(now.getTime() - 7 * 86_400_000);
+  const thirtyDaysAgo = new Date(now.getTime() - 30 * 86_400_000);
+  const startOfToday = new Date(now); startOfToday.setUTCHours(0, 0, 0, 0);
+  const [
+    [totalUsers], [newUsers7d], [activeLearners7d], [attemptsStarted7d], [attemptsCompleted7d], [averageScore7d],
+    [activeSubs], [trialSubs], [expiredUsers], [pendingPayments], [approvedPayments30d], [rejectedPayments30d],
+    [revenue30d], [averageReviewHours], [aiToday], [aiLatency7d], [publishedContent], [draftContent],
+  ] = await Promise.all([
     db.select({ value: count() }).from(users),
+    db.select({ value: count() }).from(users).where(gt(users.createdAt, sevenDaysAgo)),
+    db.select({ value: sql<number>`count(distinct ${activityEvents.userId})` }).from(activityEvents).where(gt(activityEvents.occurredAt, sevenDaysAgo)),
+    db.select({ value: count() }).from(attempts).where(gt(attempts.startedAt, sevenDaysAgo)),
+    db.select({ value: count() }).from(attempts).where(and(eq(attempts.status, 'completed'), gt(attempts.startedAt, sevenDaysAgo))),
+    db.select({ value: sql<number | null>`avg(${attempts.percentage})` }).from(attempts).where(and(eq(attempts.status, 'completed'), gt(attempts.startedAt, sevenDaysAgo))),
     db.select({ value: count() }).from(subscriptions).where(and(eq(subscriptions.status, 'active'), gt(subscriptions.expiresAt, now))),
-    db.select({ value: count() }).from(subscriptions).where(sql`${subscriptions.expiresAt} <= ${now}`),
     db.select({ value: count() }).from(subscriptions).where(and(eq(subscriptions.status, 'trial'), gt(subscriptions.expiresAt, now))),
-    db.select({ value: sum(usageLimits.aiCreditsUsed) }).from(usageLimits).where(eq(usageLimits.date, todayKey(now))),
+    db.select({ value: sql<number>`count(distinct ${subscriptions.userId})` }).from(subscriptions).where(sql`${subscriptions.expiresAt} <= ${now}`),
+    db.select({ value: count() }).from(manualPayments).where(eq(manualPayments.status, 'pending')),
+    db.select({ value: count() }).from(manualPayments).where(and(eq(manualPayments.status, 'approved'), gt(manualPayments.reviewedAt, thirtyDaysAgo))),
+    db.select({ value: count() }).from(manualPayments).where(and(eq(manualPayments.status, 'rejected'), gt(manualPayments.reviewedAt, thirtyDaysAgo))),
+    db.select({ value: sum(manualPayments.amountMad) }).from(manualPayments).where(and(eq(manualPayments.status, 'approved'), gt(manualPayments.reviewedAt, thirtyDaysAgo))),
+    db.select({ value: sql<number | null>`avg((${manualPayments.reviewedAt} - ${manualPayments.createdAt}) / 3600.0)` }).from(manualPayments).where(and(inArray(manualPayments.status, ['approved', 'rejected']), gt(manualPayments.reviewedAt, thirtyDaysAgo))),
+    db.select({ value: count() }).from(aiSubmissions).where(gt(aiSubmissions.submittedAt, startOfToday)),
+    db.select({ value: sql<number | null>`avg(${aiSubmissions.latencyMs})` }).from(aiSubmissions).where(gt(aiSubmissions.submittedAt, sevenDaysAgo)),
+    db.select({ value: count() }).from(contentItems).where(eq(contentItems.status, 'published')),
+    db.select({ value: count() }).from(contentItems).where(eq(contentItems.status, 'draft')),
   ]);
 
   return c.json({
-    totalUsers: totalUsers.value,
-    activeSubscriptions: activeSubs.value,
-    expiredSubscriptions: expiredSubs.value,
-    trialSubscriptions: trialSubs.value,
-    aiUsageToday: Number(aiToday.value ?? 0),
+    generatedAt: now.toISOString(),
+    overview: { totalUsers: totalUsers.value, newUsers7d: newUsers7d.value, activeLearners7d: activeLearners7d.value },
+    learning: {
+      attemptsStarted7d: attemptsStarted7d.value,
+      attemptsCompleted7d: attemptsCompleted7d.value,
+      completionRate7d: attemptsStarted7d.value ? Math.round((attemptsCompleted7d.value / attemptsStarted7d.value) * 1000) / 10 : 0,
+      averageScore7d: Math.round(Number(averageScore7d.value ?? 0) * 10) / 10,
+    },
+    subscriptions: { active: activeSubs.value, trial: trialSubs.value, usersWithExpiredHistory: expiredUsers.value },
+    payments: { pending: pendingPayments.value, approved30d: approvedPayments30d.value, rejected30d: rejectedPayments30d.value, revenueMad30d: Number(revenue30d.value ?? 0), averageReviewHours30d: Math.round(Number(averageReviewHours.value ?? 0) * 10) / 10 },
+    ai: { submissionsToday: aiToday.value, averageLatencyMs7d: Math.round(Number(aiLatency7d.value ?? 0)) },
+    content: { published: publishedContent.value, drafts: draftContent.value },
   });
 });
 

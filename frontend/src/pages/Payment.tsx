@@ -13,7 +13,7 @@ export function Payment() {
   return (
     <div className="min-h-screen bg-bg" dir="ltr">
       <Navbar />
-      <main className="mx-auto max-w-4xl px-4 py-12">
+      <main id="main-content" tabIndex={-1} className="mx-auto max-w-4xl px-4 py-12">
         <h1 className="text-3xl font-bold">Paiement manuel</h1>
         <p className="mt-2 text-muted">Choisis un pack, ouvre WhatsApp, fais le virement CIH et envoie le Payment ID.</p>
         <Link to="/pricing" className="mt-5 inline-block">

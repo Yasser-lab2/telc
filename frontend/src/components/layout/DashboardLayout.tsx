@@ -15,6 +15,7 @@ export function DashboardLayout() {
   return (
     <div className="app-canvas min-h-screen text-ink" dir="ltr">
       <header className="sticky top-0 z-20 border-b border-border/80 bg-bg/90 backdrop-blur-xl">
+        <a className="skip-link" href="#main-content">Aller au contenu principal</a>
         <nav aria-label={t('navigation')} className="mx-auto flex min-h-16 w-full max-w-7xl items-center justify-between gap-3 px-4 md:px-6">
           <Link to="/dashboard" className="flex shrink-0 items-center gap-3">
             <span className="brand-mark">T</span>
@@ -69,7 +70,7 @@ export function DashboardLayout() {
         {mainLinks.map(([label, to]) => <NavLink key={to} to={to} className={({ isActive }) => `truncate rounded-xl px-1 py-3 text-center text-[11px] font-bold ${isActive ? 'bg-accent text-white' : 'text-muted'}`}>{label}</NavLink>)}
       </nav>
 
-      <main className="mx-auto w-full max-w-7xl px-4 py-8 pb-24 md:px-6 lg:py-10">
+      <main id="main-content" tabIndex={-1} className="mx-auto w-full max-w-7xl px-4 py-8 pb-24 md:px-6 lg:py-10">
         <Outlet />
       </main>
     </div>

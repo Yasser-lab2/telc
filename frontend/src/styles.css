@@ -33,6 +33,13 @@ button, a, input, textarea, select { -webkit-tap-highlight-color: transparent; }
 
 :focus-visible { outline: 3px solid rgba(1, 105, 111, 0.28); outline-offset: 2px; }
 
+.skip-link { position: fixed; left: 1rem; top: 0.5rem; z-index: 100; transform: translateY(-150%); border-radius: 0.5rem; background: var(--text); padding: 0.65rem 1rem; color: white; font-weight: 800; }
+.skip-link:focus { transform: translateY(0); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; }
+}
+
 .app-canvas {
   background:
     radial-gradient(circle at 85% 0%, rgba(1, 105, 111, 0.09), transparent 28rem),

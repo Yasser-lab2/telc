@@ -46,6 +46,16 @@ export type UserPreferences = {
   updatedAt?: string;
 };
 
+export type AdminStats = {
+  generatedAt: string;
+  overview: { totalUsers: number; newUsers7d: number; activeLearners7d: number };
+  learning: { attemptsStarted7d: number; attemptsCompleted7d: number; completionRate7d: number; averageScore7d: number };
+  subscriptions: { active: number; trial: number; usersWithExpiredHistory: number };
+  payments: { pending: number; approved30d: number; rejected30d: number; revenueMad30d: number; averageReviewHours30d: number };
+  ai: { submissionsToday: number; averageLatencyMs7d: number };
+  content: { published: number; drafts: number };
+};
+
 export type AdminLearningPayload = {
   skill: 'listening' | 'writing'; title: string; level: 'B1' | 'B2'; status: 'draft' | 'published';
   accessStatus: 'free' | 'premium'; difficulty: 'introductory' | 'standard' | 'advanced'; durationMinutes?: number;
@@ -142,7 +152,8 @@ export async function api<T>(path: string, options: RequestInit = {}): Promise<T
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
     const details = Array.isArray(data.details) ? `\n${data.details.join('\n')}` : '';
-    throw new Error(`${data.error ?? 'Request failed'}${details}`);
+    const requestId = typeof data.requestId === 'string' ? `\nRéférence: ${data.requestId}` : '';
+    throw new Error(`${data.error ?? 'Request failed'}${details}${requestId}`);
   }
   return data as T;
 }
@@ -183,7 +194,7 @@ export const apiClient = {
   myPayments: () => api<{ payments: Array<Record<string, unknown>> }>('/api/payments/manual/my'),
   uploadPaymentProof: (id: string, file: File) => { const body = new FormData(); body.append('proof', file); return apiForm<{ ok: true; fileName: string }>(`/api/payments/manual/${id}/proof`, body); },
   adminPayments: () => api<{ payments: Array<Record<string, unknown>> }>('/api/admin/payments/pending'),
-  adminStats: () => api<Record<string, number>>('/api/admin/stats'),
+  adminStats: () => api<AdminStats>('/api/admin/stats'),
   adminUsers: (q = '') => api<{ users: Array<{
     id: string; email: string; displayName: string; niveau: 'B1' | 'B2' | 'B1_B2'; role: AppRole;
     createdAt: string; lastSeenAt: string; completedAttempts: number;

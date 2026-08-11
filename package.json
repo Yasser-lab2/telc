@@ -11,6 +11,8 @@
     "dev:api": "npm run dev -w backend",
     "build": "npm run build -w frontend && npm run build -w backend",
     "typecheck": "npm run typecheck -w frontend && npm run typecheck -w backend",
+    "test": "npm run test -w backend && npm run test:a11y",
+    "test:a11y": "node scripts/check-accessibility.mjs",
     "db:seed": "npm run db:seed -w backend",
     "db:demo": "npm run db:demo -w backend",
     "admin:create": "npm run admin:create -w backend"
