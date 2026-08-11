@@ -6,12 +6,12 @@ const messages = {
   fr: {
     pricing: 'Tarifs', dashboard: 'Aujourd’hui', login: 'Connexion', register: 'Créer un compte',
     logout: 'Déconnexion', reading: 'Lire', listening: 'Écouter', writing: 'Écrire', simulation: 'Simulation',
-    profile: 'Profil', admin: 'Administration', menu: 'Menu', language: 'Langue', navigation: 'Navigation principale',
+    profile: 'Profil', payment: 'Paiement', admin: 'Administration', menu: 'Menu', language: 'Langue', navigation: 'Navigation principale',
   },
   de: {
     pricing: 'Preise', dashboard: 'Heute', login: 'Anmelden', register: 'Konto erstellen',
     logout: 'Abmelden', reading: 'Lesen', listening: 'Hören', writing: 'Schreiben', simulation: 'Prüfung',
-    profile: 'Profil', admin: 'Verwaltung', menu: 'Menü', language: 'Sprache', navigation: 'Hauptnavigation',
+    profile: 'Profil', payment: 'Zahlung', admin: 'Verwaltung', menu: 'Menü', language: 'Sprache', navigation: 'Hauptnavigation',
   },
 } as const;
 

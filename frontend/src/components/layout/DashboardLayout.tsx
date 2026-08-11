@@ -9,7 +9,7 @@ export function DashboardLayout() {
   const initial = user?.displayName?.charAt(0).toUpperCase() ?? user?.email?.charAt(0).toUpperCase() ?? 'U';
   const mainLinks = [
     [t('dashboard'), '/dashboard'], [t('reading'), '/dashboard/lesen'], [t('listening'), '/dashboard/horen'],
-    [t('writing'), '/dashboard/schreiben'], [t('simulation'), '/dashboard/simulation'],
+    [t('writing'), '/dashboard/schreiben'], [t('simulation'), '/dashboard/simulation'], [t('payment'), '/payment'],
   ];
 
   return (
@@ -66,7 +66,7 @@ export function DashboardLayout() {
         </nav>
       </header>
 
-      <nav aria-label={t('menu')} className="fixed inset-x-3 bottom-3 z-30 grid grid-cols-5 rounded-2xl border border-border bg-surface/95 p-1 shadow-xl backdrop-blur lg:hidden">
+      <nav aria-label={t('menu')} className="fixed inset-x-3 bottom-3 z-30 grid grid-cols-6 rounded-2xl border border-border bg-surface/95 p-1 shadow-xl backdrop-blur lg:hidden">
         {mainLinks.map(([label, to]) => <NavLink key={to} to={to} className={({ isActive }) => `truncate rounded-xl px-1 py-3 text-center text-[11px] font-bold ${isActive ? 'bg-accent text-white' : 'text-muted'}`}>{label}</NavLink>)}
       </nav>
 

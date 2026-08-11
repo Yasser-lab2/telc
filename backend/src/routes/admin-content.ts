@@ -1,4 +1,4 @@
-import { count, eq, inArray } from 'drizzle-orm';
+import { avg, count, eq, inArray, sql } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
@@ -31,6 +31,17 @@ const payloadSchema = z.discriminatedUnion('skill', [listeningSchema, writingSch
 app.get('/', async (c) => {
   const rows = await getDb(c.env.DB).select().from(contentItems).where(inArray(contentItems.skill, ['listening', 'writing']));
   return c.json({ items: rows });
+});
+
+app.get('/analytics', async (c) => {
+  const rows = await getDb(c.env.DB).select({
+    id: contentItems.id, title: contentItems.title, skill: contentItems.skill, status: contentItems.status,
+    starts: count(attempts.id),
+    completions: sql<number>`sum(case when ${attempts.status} = 'completed' then 1 else 0 end)`,
+    abandonments: sql<number>`sum(case when ${attempts.status} = 'abandoned' then 1 else 0 end)`,
+    averageScore: avg(attempts.percentage),
+  }).from(contentItems).leftJoin(attempts, eq(attempts.contentItemId, contentItems.id)).groupBy(contentItems.id).orderBy(sql`count(${attempts.id}) desc`).limit(100);
+  return c.json({ items: rows.map((row) => ({ ...row, starts: Number(row.starts), completions: Number(row.completions ?? 0), abandonments: Number(row.abandonments ?? 0), averageScore: row.averageScore == null ? null : Math.round(Number(row.averageScore) * 10) / 10 })) });
 });
 
 app.get('/:id', async (c) => {

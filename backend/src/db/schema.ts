@@ -439,6 +439,83 @@ export const activityEvents = sqliteTable(
   }),
 );
 
+export const studyGoals = sqliteTable('study_goals', {
+  userId: text('user_id').primaryKey().references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  weeklyTarget: integer('weekly_target').default(3).notNull(),
+  updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull(),
+});
+
+export const mistakeItems = sqliteTable('mistake_items', {
+  id: text('id').primaryKey(),
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  attemptId: text('attempt_id').references(() => attempts.id, { onDelete: 'set null' }),
+  contentItemId: text('content_item_id').notNull().references(() => contentItems.id, { onDelete: 'cascade' }),
+  sourceQuestionId: text('source_question_id').notNull(),
+  skill: text('skill').notNull(),
+  prompt: text('prompt').notNull(),
+  selectedAnswer: text('selected_answer'),
+  correctAnswer: text('correct_answer'),
+  explanation: text('explanation'),
+  occurrenceCount: integer('occurrence_count').default(1).notNull(),
+  status: text('status', { enum: ['open', 'reviewed'] }).default('open').notNull(),
+  firstSeenAt: integer('first_seen_at', { mode: 'timestamp' }).notNull(),
+  lastSeenAt: integer('last_seen_at', { mode: 'timestamp' }).notNull(),
+  reviewedAt: integer('reviewed_at', { mode: 'timestamp' }),
+}, (table) => ({ userQuestionIdx: uniqueIndex('mistake_items_user_question_idx').on(table.userId, table.contentItemId, table.sourceQuestionId) }));
+
+export const dismissedRecommendations = sqliteTable('dismissed_recommendations', {
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  contentItemId: text('content_item_id').notNull().references(() => contentItems.id, { onDelete: 'cascade' }),
+  dismissedAt: integer('dismissed_at', { mode: 'timestamp' }).notNull(),
+}, (table) => ({ pk: uniqueIndex('dismissed_recommendations_pk').on(table.userId, table.contentItemId) }));
+
+export const simulationBlueprints = sqliteTable('simulation_blueprints', {
+  id: text('id').primaryKey(),
+  title: text('title').notNull(),
+  level: text('level', { enum: ['B1', 'B2'] }).notNull(),
+  status: text('status', { enum: ['draft', 'published', 'archived'] }).default('draft').notNull(),
+  accessStatus: text('access_status', { enum: ['free', 'premium'] }).default('premium').notNull(),
+  durationMinutes: integer('duration_minutes').notNull(),
+  instructions: text('instructions'),
+  createdBy: text('created_by').references(() => users.id, { onDelete: 'set null' }),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
+  updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull(),
+  publishedAt: integer('published_at', { mode: 'timestamp' }),
+});
+
+export const simulationModules = sqliteTable('simulation_modules', {
+  id: text('id').primaryKey(),
+  simulationId: text('simulation_id').notNull().references(() => simulationBlueprints.id, { onDelete: 'cascade' }),
+  contentItemId: text('content_item_id').notNull().references(() => contentItems.id, { onDelete: 'restrict' }),
+  skill: text('skill', { enum: ['reading', 'listening', 'writing'] }).notNull(),
+  orderIndex: integer('order_index').notNull(),
+  durationMinutes: integer('duration_minutes').notNull(),
+  weight: real('weight').default(1).notNull(),
+}, (table) => ({ simulationOrderIdx: uniqueIndex('simulation_modules_simulation_order_idx').on(table.simulationId, table.orderIndex) }));
+
+export const simulationSessions = sqliteTable('simulation_sessions', {
+  id: text('id').primaryKey(),
+  simulationId: text('simulation_id').notNull().references(() => simulationBlueprints.id, { onDelete: 'restrict' }),
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  attemptId: text('attempt_id').notNull().unique().references(() => attempts.id, { onDelete: 'cascade' }),
+  status: text('status', { enum: ['in_progress', 'completed', 'expired', 'abandoned'] }).default('in_progress').notNull(),
+  startedAt: integer('started_at', { mode: 'timestamp' }).notNull(),
+  expiresAt: integer('expires_at', { mode: 'timestamp' }).notNull(),
+  finishedAt: integer('finished_at', { mode: 'timestamp' }),
+  percentage: real('percentage'),
+}, (table) => ({ userStatusIdx: index('simulation_sessions_user_status_idx').on(table.userId, table.status, table.startedAt) }));
+
+export const simulationModuleResults = sqliteTable('simulation_module_results', {
+  id: text('id').primaryKey(),
+  sessionId: text('session_id').notNull().references(() => simulationSessions.id, { onDelete: 'cascade' }),
+  moduleId: text('module_id').notNull().references(() => simulationModules.id, { onDelete: 'restrict' }),
+  childAttemptId: text('child_attempt_id').references(() => attempts.id, { onDelete: 'set null' }),
+  status: text('status', { enum: ['locked', 'available', 'in_progress', 'completed'] }).default('locked').notNull(),
+  startedAt: integer('started_at', { mode: 'timestamp' }),
+  completedAt: integer('completed_at', { mode: 'timestamp' }),
+  percentage: real('percentage'),
+}, (table) => ({ sessionModuleIdx: uniqueIndex('simulation_module_results_session_module_idx').on(table.sessionId, table.moduleId) }));
+
 export const adminAuditLogs = sqliteTable(
   'admin_audit_logs',
   {

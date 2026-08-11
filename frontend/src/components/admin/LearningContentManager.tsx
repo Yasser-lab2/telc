@@ -12,6 +12,7 @@ const initialForm = (): AdminLearningPayload => ({ skill: 'writing', title: '', 
 export function LearningContentManager() {
   const queryClient = useQueryClient();
   const list = useQuery({ queryKey: ['admin-learning-content'], queryFn: apiClient.adminLearningContent });
+  const analytics = useQuery({ queryKey: ['admin-content-analytics'], queryFn: apiClient.adminContentAnalytics });
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [form, setForm] = useState<AdminLearningPayload>(initialForm);
   const [message, setMessage] = useState<string | null>(null);
@@ -41,6 +42,7 @@ export function LearningContentManager() {
       {message && <p className={`mt-4 text-sm ${save.isError ? 'text-red-600' : 'text-muted'}`}>{message}</p>}<Button className="mt-5" disabled={!valid || save.isPending} onClick={() => save.mutate()}>{save.isPending ? 'Sauvegarde…' : selectedId ? 'Enregistrer les modifications' : 'Créer le contenu'}</Button>
     </Card>
     <Card><h2 className="text-xl font-black">Contenus Hören & Schreiben</h2><div className="mt-4 overflow-x-auto"><table className="w-full min-w-[720px] text-left text-sm"><thead className="text-muted"><tr><th className="py-2">Titre</th><th>Compétence</th><th>Niveau</th><th>Statut</th><th>Accès</th><th>Actions</th></tr></thead><tbody>{list.data?.items.map((item) => <tr key={item.id} className="border-t border-border"><td className="py-3 font-bold">{item.title}</td><td>{item.skill}</td><td>{item.level}</td><td>{item.status}</td><td>{item.accessStatus}</td><td className="flex gap-2 py-2"><Button variant="secondary" onClick={() => void edit(item.id)}>Modifier</Button>{item.status !== 'archived' && <Button variant="danger" onClick={() => { if (confirm(`Archiver ${item.title} ?`)) archive.mutate(item.id); }}>Archiver</Button>}</td></tr>)}</tbody></table></div></Card>
+    <Card><h2 className="text-xl font-black">Analytics des contenus</h2><p className="mt-1 text-sm text-muted">Données calculées depuis les tentatives réelles.</p><div className="mt-4 overflow-x-auto"><table className="w-full min-w-[680px] text-left text-sm"><thead className="text-muted"><tr><th className="py-2">Contenu</th><th>Démarrées</th><th>Terminées</th><th>Abandonnées</th><th>Complétion</th><th>Score moyen</th></tr></thead><tbody>{analytics.data?.items.map((item) => <tr key={item.id} className="border-t border-border"><td className="py-3"><span className="font-bold">{item.title}</span><span className="ml-2 text-xs text-muted">{item.skill}</span></td><td>{item.starts}</td><td>{item.completions}</td><td>{item.abandonments}</td><td>{item.starts ? `${Math.round(item.completions / item.starts * 100)} %` : '—'}</td><td>{item.averageScore == null ? '—' : `${item.averageScore} %`}</td></tr>)}</tbody></table></div></Card>
   </div>;
 }
 

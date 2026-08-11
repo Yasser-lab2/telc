@@ -1,4 +1,4 @@
-import { and, count, desc, eq, gt, inArray, like, or, sql, sum } from 'drizzle-orm';
+import { and, count, desc, eq, gt, inArray, like, lte, or, sql, sum } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
@@ -48,7 +48,31 @@ app.post('/payments/:id/approve', requirePermission('payments.review'), async (c
   if (!row) return apiError(c, 404, 'Payment not found', 'NOT_FOUND');
   if (row.payment.status === 'approved') {
     const [existingSubscription] = await db.select().from(subscriptions).where(eq(subscriptions.paymentId, paymentId)).limit(1);
-    return c.json({ ok: true, expiresAt: existingSubscription?.expiresAt ?? row.payment.approvedAt, alreadyProcessed: true });
+    if (existingSubscription) {
+      return c.json({ ok: true, expiresAt: existingSubscription.expiresAt, alreadyProcessed: true });
+    }
+
+    // Recover approvals that were interrupted after the payment update but
+    // before the subscription was created.
+    const startsAt = row.payment.approvedAt ?? row.payment.reviewedAt ?? new Date();
+    const expiresAt = addDays(startsAt, row.plan.durationDays);
+    await db.insert(subscriptions).values({
+      id: nanoid(),
+      userId: row.payment.userId,
+      planId: row.plan.id,
+      paymentId,
+      status: 'active',
+      startsAt,
+      expiresAt,
+      createdAt: new Date(),
+    }).onConflictDoNothing({ target: subscriptions.paymentId });
+    await audit(c.env.DB, admin.id, 'payment.approval_recovered', 'payment', paymentId, {
+      userId: row.payment.userId,
+      planId: row.plan.id,
+      expiresAt,
+    });
+
+    return c.json({ ok: true, expiresAt, alreadyProcessed: true, recovered: true });
   }
   if (row.payment.status !== 'pending') return apiError(c, 400, 'Only pending payments can be approved', 'BAD_REQUEST');
   if (!row.payment.proofObjectKey) return apiError(c, 400, 'Payment proof is required before approval', 'BAD_REQUEST');
@@ -134,7 +158,7 @@ app.get('/stats', requirePermission('analytics.view'), async (c) => {
     db.select({ value: sql<number | null>`avg(${attempts.percentage})` }).from(attempts).where(and(eq(attempts.status, 'completed'), gt(attempts.startedAt, sevenDaysAgo))),
     db.select({ value: count() }).from(subscriptions).where(and(eq(subscriptions.status, 'active'), gt(subscriptions.expiresAt, now))),
     db.select({ value: count() }).from(subscriptions).where(and(eq(subscriptions.status, 'trial'), gt(subscriptions.expiresAt, now))),
-    db.select({ value: sql<number>`count(distinct ${subscriptions.userId})` }).from(subscriptions).where(sql`${subscriptions.expiresAt} <= ${now}`),
+    db.select({ value: sql<number>`count(distinct ${subscriptions.userId})` }).from(subscriptions).where(lte(subscriptions.expiresAt, now)),
     db.select({ value: count() }).from(manualPayments).where(eq(manualPayments.status, 'pending')),
     db.select({ value: count() }).from(manualPayments).where(and(eq(manualPayments.status, 'approved'), gt(manualPayments.reviewedAt, thirtyDaysAgo))),
     db.select({ value: count() }).from(manualPayments).where(and(eq(manualPayments.status, 'rejected'), gt(manualPayments.reviewedAt, thirtyDaysAgo))),

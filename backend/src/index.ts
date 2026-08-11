@@ -18,6 +18,8 @@ import usageRoutes from './routes/usage';
 import contentRoutes from './routes/content';
 import progressRoutes from './routes/progress';
 import adminContentRoutes from './routes/admin-content';
+import adminSimulationRoutes from './routes/admin-simulations';
+import simulationRoutes from './routes/simulations';
 import { authMiddleware } from './middleware/auth';
 import type { Env } from './types';
 
@@ -107,6 +109,8 @@ app.route('/api/schreiben', schreibenRoutes);
 app.route('/api/content', contentRoutes);
 app.route('/api/progress', progressRoutes);
 app.route('/api/admin/content', adminContentRoutes);
+app.route('/api/admin/simulations', adminSimulationRoutes);
+app.route('/api/simulations', simulationRoutes);
 
 app.notFound((c) => c.json({ error: 'Not found', code: 'NOT_FOUND', requestId: c.get('requestId') }, 404));
 

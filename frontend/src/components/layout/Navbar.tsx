@@ -36,6 +36,9 @@ export function Navbar() {
               <NavLink to="/dashboard/profile" className="nav-link">
                 {t('profile')}
               </NavLink>
+              <NavLink to="/payment" className="nav-link">
+                {t('payment')}
+              </NavLink>
               {user.permissions.includes('admin.access') && (
                 <NavLink to="/admin" className="px-2 py-1 text-muted hover:text-text">
                   {t('admin')}

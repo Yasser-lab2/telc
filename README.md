@@ -38,6 +38,9 @@ npx wrangler d1 execute telc-prep --local --config backend/wrangler.toml --file=
 npx wrangler d1 execute telc-prep --local --config backend/wrangler.toml --file=backend/src/db/migrations/0011_account_security.sql
 npx wrangler d1 execute telc-prep --local --config backend/wrangler.toml --file=backend/src/db/migrations/0012_user_preferences.sql
 npx wrangler d1 execute telc-prep --local --config backend/wrangler.toml --file=backend/src/db/migrations/0013_legal_consents.sql
+npx wrangler d1 execute telc-prep --local --config backend/wrangler.toml --file=backend/src/db/migrations/0014_simulation_foundation.sql
+npx wrangler d1 execute telc-prep --local --config backend/wrangler.toml --file=backend/src/db/migrations/0015_subscription_payment_index.sql
+npx wrangler d1 execute telc-prep --local --config backend/wrangler.toml --file=backend/src/db/migrations/0016_exam_readiness.sql
 ```
 
 Seed plans:

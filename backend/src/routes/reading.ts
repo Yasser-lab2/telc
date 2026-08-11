@@ -17,6 +17,7 @@ import { authMiddleware } from '../middleware/auth';
 import type { Env } from '../types';
 import { ensureReadingCatalogItem } from '../lib/reading-catalog';
 import { syncProgressAfterCompletion } from '../lib/progress';
+import { recordMistakes } from '../lib/mistakes';
 
 const app = new Hono<Env>();
 app.use('*', authMiddleware);
@@ -259,6 +260,8 @@ app.post('/sessions/:sessionId/submit', async (c) => {
       scoreObtained: score, scoreMax: session.scoreMax ?? exam.scoreMax, percentage,
     }).where(and(eq(attempts.id, sharedAttemptId), eq(attempts.status, 'in_progress')));
     await syncProgressAfterCompletion(c.env.DB, { userId: user.id, attemptId: sharedAttemptId, skill: 'reading', level: exam.level });
+    const contentItemId = await ensureReadingCatalogItem(c.env.DB, exam);
+    await recordMistakes(c.env.DB, { userId: user.id, attemptId: sharedAttemptId, contentItemId, skill: 'reading', items: corrections.map((item) => ({ questionId: item.questionId, prompt: item.questionText, selectedAnswer: item.selectedOptionCode, correctAnswer: item.correctOptionCode, explanation: item.explanation, isCorrect: item.isCorrect })) });
   }
 
   return c.json({

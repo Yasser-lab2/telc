@@ -7,6 +7,7 @@ import { attemptAnswers, attempts } from '../db/schema';
 import { apiError } from '../lib/http';
 import { listPublishedContent, loadPublishedContent } from '../lib/content';
 import { syncProgressAfterCompletion } from '../lib/progress';
+import { recordMistakes } from '../lib/mistakes';
 import { authMiddleware } from '../middleware/auth';
 import { subscriptionMiddleware } from '../middleware/subscription';
 import type { Env } from '../types';
@@ -185,6 +186,7 @@ app.post('/sessions/:sessionId/submit', async (c) => {
       if (answer) await db.update(attemptAnswers).set({ isCorrect: correction.isCorrect, pointsAwarded: correction.isCorrect ? correction.points : 0 }).where(eq(attemptAnswers.id, answer.id));
     }
     await syncProgressAfterCompletion(c.env.DB, { userId: user.id, attemptId: attempt.id, skill: 'listening', level: item.level });
+    await recordMistakes(c.env.DB, { userId: user.id, attemptId: attempt.id, contentItemId: attempt.contentItemId, skill: 'listening', items: corrections.map((entry) => ({ questionId: entry.questionId, prompt: entry.questionText, selectedAnswer: entry.selectedOptionCode, correctAnswer: entry.correctOptionCode, explanation: entry.explanation, isCorrect: entry.isCorrect })) });
   }
   return c.json({ score, scoreMax, percentage, transcript: item.sections[0]?.body ?? '', corrections });
 });

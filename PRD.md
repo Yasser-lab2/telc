@@ -10,6 +10,7 @@
 - **Phase 0 — Complete:** shared visual tokens, responsive learner navigation, localization foundation and CI baseline started on 2026-08-07. Home, pricing, authentication and the primary dashboard were migrated to the professional light design on 2026-08-08; fake dashboard progress/activity was removed pending real attempt data. The additive shared content, media, attempt, progress and activity schema was introduced in migration `0003_learning_core.sql` on 2026-08-08.
 - **Phase 1 — Complete:** the shared content repository/read API was added and the existing listening and writing exercises were migrated from hard-coded runtime data into D1 in migration `0004_seed_listening_writing.sql`. The reading JSON import/editor remains supported.
 - Persistent listening attempts, answer saving, server-side scoring, idempotent progress/activity updates and the first real dashboard progress read model were added on 2026-08-08.
+- Payment history and proof upload were made directly discoverable from authenticated desktop and mobile navigation on 2026-08-11.
 - Persistent writing drafts, AI-linked shared attempts, revision creation, submission history and immediate progress refresh were added on 2026-08-08.
 - Reading sessions were bridged into shared attempts, progress and activity on 2026-08-08 without removing or changing the JSON exam import/editor.
 - A repeatable local demonstration dataset was added on 2026-08-08 to showcase subscriptions, reading content, cross-skill progress, recent activity and writing feedback without placing mock records in production migrations.
@@ -28,7 +29,8 @@
 - Role-based access control was expanded on 2026-08-11 with least-privilege support and content-editor roles, centralized API permissions and permission-aware administration navigation.
 - The admin operational dashboard gained explicit 7-day and 30-day acquisition, learning, subscription, payment, AI latency and content-pipeline metrics on 2026-08-11.
 - Structured request logging, traceable error responses, dependency-aware health checks, a UI error boundary, automated RBAC/exam/health/accessibility tests, migration rehearsal and a recovery runbook were added on 2026-08-11.
-- **Phase 2 — Engineering complete:** the repository implementation is complete. Production release approval remains conditional on operator identity/contact details, CNDP formalities, final legal review, external alert destinations and recorded manual WCAG/responsive QA. Phases 3–4 have not started.
+- **Phase 2 — Engineering complete:** the repository implementation is complete. Production release approval remains conditional on operator identity/contact details, CNDP formalities, final legal review, external alert destinations and recorded manual WCAG/responsive QA. Phase 4 has not started.
+- **Phase 3 — Engineering complete:** persistent timed simulation blueprints, sequential cross-skill sessions, child-attempt verification, weighted scoring, history and admin publishing are implemented. Evidence-based readiness uses explicit preliminary/reliable confidence; the dashboard now includes a database-backed weekly goal, score trends, weak-skill recommendations and a reviewable mistake notebook. Admin content analytics report real starts, completions, abandonment and average scores. Completed on 2026-08-12.
 
 ## 1. Executive summary
 
@@ -429,7 +431,7 @@ All events need a written name, trigger, properties, owner and privacy classific
 - Add mistake notebook, weak-area recommendations and study plan.
 - Improve result trends and content analytics.
 
-**Exit:** simulations persist and score correctly, feed readiness once, and generate a useful next action.
+**Exit achieved (engineering, 2026-08-12):** simulations persist and score correctly, feed readiness through idempotent progress events, and generate a useful next action. Production pedagogical sign-off on the readiness formula and authentic TELC blueprints remains an operator responsibility.
 
 ### Phase 4 — Growth and differentiation
 
