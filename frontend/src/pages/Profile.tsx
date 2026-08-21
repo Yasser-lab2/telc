@@ -22,7 +22,8 @@ export function Profile() {
   const setAuth = useAuthStore((state) => state.setAuth);
   const [profile, setProfile] = useState<{ displayName: string; niveau: 'B1' | 'B2' | 'B1_B2' }>({ displayName: '', niveau: 'B1' });
   const [deletePassword, setDeletePassword] = useState('');
-  const [preferenceForm, setPreferenceForm] = useState({ locale: 'fr' as 'fr' | 'de', emailStudyReminders: true, emailProductUpdates: false });
+  const [preferenceForm, setPreferenceForm] = useState({ locale: 'fr' as 'fr' | 'de', emailStudyReminders: true, emailProductUpdates: false, personalizedRecommendations: true });
+  const referral = useQuery({ queryKey: ['referral'], queryFn: apiClient.referral });
   const sessions = useQuery({ queryKey: ['account-sessions'], queryFn: apiClient.sessions });
   const preferences = useQuery({ queryKey: ['account-preferences'], queryFn: apiClient.preferences });
   const resend = useMutation({ mutationFn: apiClient.resendVerification });
@@ -170,6 +171,7 @@ export function Profile() {
               <input className="mt-1 h-4 w-4 accent-accent" type="checkbox" checked={preferenceForm.emailProductUpdates} onChange={(event) => setPreferenceForm({ ...preferenceForm, emailProductUpdates: event.target.checked })} />
               <span><span className="block font-bold">Nouveautés du produit</span><span className="text-sm text-muted">Recevoir les annonces concernant les nouveaux exercices et fonctionnalités.</span></span>
             </label>
+            <label className="flex items-start gap-3 rounded-xl border border-border bg-white p-4"><input className="mt-1 h-4 w-4 accent-accent" type="checkbox" checked={preferenceForm.personalizedRecommendations} onChange={(event) => setPreferenceForm({ ...preferenceForm, personalizedRecommendations: event.target.checked })} /><span><span className="block font-bold">Recommandations personnalisées</span><span className="text-sm text-muted">Utiliser mes scores pour proposer la prochaine activité. Ce choix reste désactivable.</span></span></label>
             <div className="flex items-center gap-3">
               <Button disabled={savePreferences.isPending}>{savePreferences.isPending ? 'Enregistrement…' : 'Enregistrer les préférences'}</Button>
               {savePreferences.isSuccess && <span className="text-sm font-bold text-green-700">Préférences enregistrées.</span>}
@@ -178,6 +180,8 @@ export function Profile() {
           </form>
         )}
       </Card>
+
+      <Card><h2 className="text-xl font-bold">Parrainage</h2><p className="mt-1 text-sm text-muted">Partagez ce lien. Aucun avantage financier n’est attribué automatiquement.</p>{referral.data && <div className="mt-4 rounded-xl bg-bg p-4"><p className="break-all font-mono text-sm">{referral.data.shareUrl}</p><Button className="mt-3" variant="secondary" onClick={() => navigator.clipboard.writeText(referral.data!.shareUrl)}>Copier le lien</Button><p className="mt-3 text-xs text-muted">{referral.data.referrals.length} inscription(s) attribuée(s)</p></div>}</Card>
 
       <Card>
         <h2 className="text-xl font-bold">Mes données</h2>

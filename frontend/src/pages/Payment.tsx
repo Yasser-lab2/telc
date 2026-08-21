@@ -11,7 +11,7 @@ export function Payment() {
   const payments = useQuery({ queryKey: ['my-payments'], queryFn: apiClient.myPayments });
   const upload = useMutation({ mutationFn: ({ id, file }: { id: string; file: File }) => apiClient.uploadPaymentProof(id, file), onSuccess: () => queryClient.invalidateQueries({ queryKey: ['my-payments'] }) });
   return (
-    <div className="min-h-screen bg-bg" dir="ltr">
+    <div className="app-canvas min-h-screen bg-bg" dir="ltr">
       <Navbar />
       <main id="main-content" tabIndex={-1} className="mx-auto max-w-4xl px-4 py-12">
         <h1 className="text-3xl font-bold">Paiement manuel</h1>

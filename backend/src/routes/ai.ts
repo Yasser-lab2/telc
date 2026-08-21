@@ -4,7 +4,7 @@ import { nanoid } from 'nanoid';
 import { z } from 'zod';
 import { getDb } from '../db';
 import { aiSubmissions, attempts, contentItems, usageLimits, writingDrafts } from '../db/schema';
-import { gradeSchreiben } from '../lib/gemini';
+import { gradeWriting } from '../lib/ai-provider';
 import { apiError } from '../lib/http';
 import { getCurrentPlan } from '../lib/subscriptions';
 import { todayKey } from '../lib/time';
@@ -43,7 +43,7 @@ app.post('/grade', authMiddleware, subscriptionMiddleware, async (c) => {
     return c.json({ result: JSON.parse(existingSubmission.aiFeedback), usage: { limit: 0, used: 0 }, attemptId: attemptRow.attempt.id, reused: true });
   }
   if (attemptRow.attempt.status !== 'in_progress') return apiError(c, 400, 'Writing attempt is already completed', 'BAD_REQUEST');
-  if (!c.env.GEMINI_API_KEY) return apiError(c, 500, 'Gemini API key is not configured', 'AI_UNAVAILABLE');
+  if (!c.env.OPENROUTER_API_KEY && !c.env.GEMINI_API_KEY) return apiError(c, 500, 'No AI provider is configured', 'AI_UNAVAILABLE');
 
   const today = todayKey();
   const planRow = await getCurrentPlan(c.env.DB, user.id);
@@ -60,12 +60,12 @@ app.post('/grade', authMiddleware, subscriptionMiddleware, async (c) => {
 
   const started = Date.now();
   try {
-    const result = await gradeSchreiben(
-      body.data.userText,
-      attemptRow.item.level,
-      attemptRow.item.instructions ?? body.data.themaContext,
-      c.env.GEMINI_API_KEY,
-    );
+    const grading = await gradeWriting(c.env, {
+      userText: body.data.userText,
+      niveau: attemptRow.item.level,
+      themaContext: attemptRow.item.instructions ?? body.data.themaContext,
+    });
+    const result = grading.result;
 
     await db.insert(usageLimits).values({
       id: nanoid(),
@@ -99,6 +99,9 @@ app.post('/grade', authMiddleware, subscriptionMiddleware, async (c) => {
       improvedText: result.improved_text,
       feedbackAr: result.feedback_ar,
       latencyMs: Date.now() - started,
+      aiProvider: grading.provider,
+      aiModel: grading.model,
+      promptVersion: grading.promptVersion,
       submittedAt,
     });
 

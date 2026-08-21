@@ -1,11 +1,16 @@
 import assert from 'node:assert/strict';
+import { webcrypto } from 'node:crypto';
 import test from 'node:test';
-import app from './index';
+import { app } from './index';
+
+const testGlobal = globalThis as typeof globalThis & { crypto?: Crypto };
+if (!testGlobal.crypto) Object.defineProperty(testGlobal, 'crypto', { value: webcrypto });
 
 function bindings(database: { prepare: () => { first: () => Promise<unknown> } }) {
   return {
     DB: database as unknown as D1Database,
     PAYMENT_PROOFS: {} as R2Bucket,
+    SPEAKING_RECORDINGS: {} as R2Bucket,
     SESSION_SECRET: 'test-secret-that-is-long-enough', ADMIN_EMAIL: 'admin@example.com', WHATSAPP_NUMBER: '212000000000', CIH_ACCOUNT_NUMBER: 'test', APP_URL: 'http://localhost:5173',
   };
 }

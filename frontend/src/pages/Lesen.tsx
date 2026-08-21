@@ -1,12 +1,20 @@
 import { useQuery } from '@tanstack/react-query';
+import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { apiClient, type ReadingExamListItem } from '../lib/api';
 
-const categories = ['Prüfungen', 'Teil 1', 'Teil 2', 'Teil 3', 'Sprach 1', 'Sprach 2'];
+const categories = [
+  { label: 'Prüfungen', section: 'all' }, { label: 'Teil 1', section: 'teil1' },
+  { label: 'Teil 2', section: 'teil2' }, { label: 'Teil 3', section: 'teil3' },
+  { label: 'Sprach 1', section: 'sprach1' }, { label: 'Sprach 2', section: 'sprach2' },
+] as const;
 
 export function Lesen() {
   const exams = useQuery({ queryKey: ['reading-exams'], queryFn: apiClient.readingExams });
+  const [section, setSection] = useState<(typeof categories)[number]['section']>('all');
+  const [search, setSearch] = useState('');
   const count = exams.data?.exams.length ?? 0;
+  const visibleExams = useMemo(() => (exams.data?.exams ?? []).filter((exam) => exam.title.toLowerCase().includes(search.trim().toLowerCase())), [exams.data?.exams, search]);
 
   return (
     <div className="space-y-8">
@@ -46,17 +54,18 @@ export function Lesen() {
         </div>
 
         <div className="flex gap-2 overflow-x-auto pb-1">
-          {categories.map((category, index) => (
+          {categories.map((category) => (
             <button
-              key={category}
+              key={category.section}
               type="button"
+              onClick={() => setSection(category.section)}
               className={`shrink-0 rounded-full border px-4 py-2 text-sm font-bold transition ${
-                index === 0
+                section === category.section
                   ? 'border-teal-300/30 bg-teal-300/10 text-teal-100'
                   : 'border-white/10 bg-white/[0.03] text-slate-400 hover:border-white/20 hover:text-white'
               }`}
             >
-              {category}
+              {category.label}
             </button>
           ))}
         </div>
@@ -65,6 +74,8 @@ export function Lesen() {
           <input
             type="search"
             placeholder="Rechercher un modèle..."
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
             className="min-h-12 w-full rounded-2xl border border-white/10 bg-black/25 px-4 pl-11 text-sm text-white outline-none placeholder:text-slate-600 focus:border-teal-300/40 focus:ring-2 focus:ring-teal-300/10"
           />
           <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-500">Q</span>
@@ -79,8 +90,8 @@ export function Lesen() {
 
       {count > 0 && (
         <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          {exams.data?.exams.map((exam: ReadingExamListItem, index: number) => (
-            <ExamCard key={exam.id} exam={exam} index={index} />
+          {visibleExams.map((exam: ReadingExamListItem, index: number) => (
+            <ExamCard key={exam.id} exam={exam} index={index} section={section} />
           ))}
         </section>
       )}
@@ -117,10 +128,10 @@ function EmptyState({ title, body }: { title: string; body: string }) {
   );
 }
 
-function ExamCard({ exam, index }: { exam: ReadingExamListItem; index: number }) {
+function ExamCard({ exam, index, section }: { exam: ReadingExamListItem; index: number; section: string }) {
   return (
     <Link
-      to={`/dashboard/lesen/${exam.id}`}
+      to={`/dashboard/lesen/${exam.id}${section === 'all' ? '' : `?section=${section}`}`}
       className="group min-h-[172px] rounded-[24px] border border-white/10 bg-[#12151d]/90 p-5 shadow-xl shadow-black/25 transition hover:-translate-y-1 hover:border-blue-300/30 hover:bg-[#151b26]"
       aria-label={`Ouvrir ${exam.title}`}
     >

@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { Dispatch, SetStateAction } from 'react';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { apiClient, type ReadingQuestion, type ReadingSection, type ReadingSubmitResult } from '../lib/api';
 
 const tabs = [
@@ -12,11 +12,17 @@ const tabs = [
   { id: 'sprach1', label: 'Sprach 1' },
   { id: 'sprach2', label: 'Sprach 2' },
 ] as const;
+type PracticeScope = (typeof tabs)[number]['id'];
+const practiceDurations: Record<PracticeScope, number> = { all: 90, teil1: 20, teil2: 20, teil3: 20, sprach1: 15, sprach2: 15 };
 
 export function LesenExercise() {
   const { themeId = '' } = useParams();
+  const [searchParams] = useSearchParams();
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState<(typeof tabs)[number]['id']>('all');
+  const requestedSection = searchParams.get('section');
+  const initialTab = tabs.some((tab) => tab.id === requestedSection) ? requestedSection as (typeof tabs)[number]['id'] : 'all';
+  const [activeTab, setActiveTab] = useState<(typeof tabs)[number]['id']>(initialTab);
+  const [sessionScope, setSessionScope] = useState<PracticeScope | null>(null);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [startedAt, setStartedAt] = useState<string | null>(null);
@@ -33,16 +39,20 @@ export function LesenExercise() {
     hydratedSession.current = recovered.id;
     setSessionId(recovered.id);
     setStartedAt(recovered.startedAt);
+    setSessionScope(recovered.practiceScope);
+    setActiveTab(recovered.practiceScope);
     setAnswers(Object.fromEntries(activeSession.data?.answers.map((answer) => [answer.questionId, answer.selectedOptionCode]) ?? []));
     setSaveStatus('saved');
   }, [activeSession.data]);
 
   const start = useMutation({
-    mutationFn: () => apiClient.startReadingExam(themeId),
-    onSuccess: (data: { session: { id: string; startedAt: string; status: string } }) => {
+    mutationFn: (scope: PracticeScope) => apiClient.startReadingExam(themeId, scope),
+    onSuccess: (data) => {
       hydratedSession.current = data.session.id;
       setSessionId(data.session.id);
       setStartedAt(data.session.startedAt);
+      setSessionScope(data.session.practiceScope);
+      setActiveTab(data.session.practiceScope);
     },
   });
   const save = useMutation({
@@ -56,10 +66,11 @@ export function LesenExercise() {
   });
   const submit = useMutation({
     mutationFn: async () => {
-      const started = sessionId ? null : (await apiClient.startReadingExam(themeId)).session;
+      const started = sessionId ? null : (await apiClient.startReadingExam(themeId, activeTab)).session;
       const id = sessionId ?? started!.id;
       setSessionId(id);
       if (started) setStartedAt(started.startedAt);
+      if (started) setSessionScope(started.practiceScope);
       const answerRows = Object.entries(answers).map(([questionId, selectedOptionCode]) => ({ questionId, selectedOptionCode }));
       if (answerRows.length) await apiClient.saveReadingAnswers(id, answerRows);
       return apiClient.submitReadingSession(id);
@@ -84,9 +95,12 @@ export function LesenExercise() {
     return activeTab === 'all' ? sections : sections.filter((section: ReadingSection) => section.sectionCode === activeTab);
   }, [activeTab, exam.data?.exam.sections]);
 
-  const totalQuestions = exam.data?.exam.sections.reduce((total, section) => total + section.questions.length, 0) ?? 0;
-  const answeredQuestions = Object.keys(answers).length;
-  const secondsRemaining = useCountdown(startedAt, exam.data?.exam.durationMinutes ?? 0, Boolean(sessionId) && !result);
+  const visibleQuestionIds = useMemo(() => new Set(visibleSections.flatMap((section) => section.questions.map((question) => question.id))), [visibleSections]);
+  const totalQuestions = visibleSections.reduce((total, section) => total + section.questions.length, 0);
+  const answeredQuestions = Object.keys(answers).filter((id) => visibleQuestionIds.has(id)).length;
+  const effectiveScope = sessionScope ?? activeTab;
+  const durationMinutes = effectiveScope === 'all' ? (exam.data?.exam.durationMinutes ?? 90) : practiceDurations[effectiveScope];
+  const secondsRemaining = useCountdown(startedAt, durationMinutes, Boolean(sessionId) && !result);
   const expirySubmitted = useRef(false);
   useEffect(() => {
     if (sessionId && secondsRemaining === 0 && !result && !submit.isPending && !expirySubmitted.current) {
@@ -112,10 +126,11 @@ export function LesenExercise() {
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
+          <span className="rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-bold text-slate-300">{durationMinutes} min · {tabs.find((tab) => tab.id === effectiveScope)?.label}</span>
           {sessionId && <span className={`rounded-xl border px-4 py-3 text-sm font-black ${secondsRemaining < 300 ? 'border-red-300 bg-red-50 text-red-700' : 'border-border bg-surface text-ink'}`}>{formatCountdown(secondsRemaining)}</span>}
           <button
             type="button"
-            onClick={() => start.mutate()}
+            onClick={() => start.mutate(activeTab)}
             disabled={start.isPending || Boolean(sessionId)}
             className="min-h-11 rounded-2xl border border-teal-300/30 bg-teal-300/10 px-5 text-sm font-black text-teal-100 transition hover:bg-teal-300/20 disabled:opacity-50"
           >
@@ -131,8 +146,9 @@ export function LesenExercise() {
             key={tab.id}
             type="button"
             onClick={() => setActiveTab(tab.id)}
+            disabled={Boolean(sessionId) && tab.id !== sessionScope}
             className={`shrink-0 rounded-full px-4 py-2 text-sm font-bold transition ${
-              activeTab === tab.id ? 'bg-white text-slate-950' : 'text-slate-400 hover:bg-white/10 hover:text-white'
+            activeTab === tab.id ? 'bg-white text-slate-950' : 'text-slate-400 hover:bg-white/10 hover:text-white disabled:cursor-not-allowed disabled:opacity-30'
             }`}
           >
             {tab.label}
@@ -150,19 +166,20 @@ export function LesenExercise() {
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3 text-sm"><span className="font-bold text-slate-300">{answeredQuestions}/{totalQuestions} questions répondues</span>{sessionId && <span aria-live="polite" className={`font-bold ${saveStatus === 'error' ? 'text-red-300' : 'text-slate-400'}`}>{saveStatus === 'saving' ? 'Enregistrement…' : saveStatus === 'saved' ? 'Réponses enregistrées' : saveStatus === 'error' ? 'Échec de sauvegarde' : ''}</span>}</div>
         {result ? (
           <ResultSummary result={result} onRetry={async () => {
-            setResult(null); setAnswers({}); setSessionId(null); setStartedAt(null); setSaveStatus('idle');
+            setResult(null); setAnswers({}); setSessionId(null); setStartedAt(null); setSessionScope(null); setSaveStatus('idle');
             hydratedSession.current = null; expirySubmitted.current = false;
-            await start.mutateAsync();
+            await start.mutateAsync(activeTab);
           }} />
         ) : (
           <div className="flex flex-col gap-3 sm:flex-row">
             <button
               type="button"
               onClick={async () => {
-                const started = sessionId ? null : (await apiClient.startReadingExam(themeId)).session;
+                const started = sessionId ? null : (await apiClient.startReadingExam(themeId, activeTab)).session;
                 const id = sessionId ?? started!.id;
                 setSessionId(id);
                 if (started) setStartedAt(started.startedAt);
+                if (started) setSessionScope(started.practiceScope);
                 setSaveStatus('saving');
                 save.mutate(id);
               }}

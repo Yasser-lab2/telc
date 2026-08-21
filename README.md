@@ -41,7 +41,20 @@ npx wrangler d1 execute telc-prep --local --config backend/wrangler.toml --file=
 npx wrangler d1 execute telc-prep --local --config backend/wrangler.toml --file=backend/src/db/migrations/0014_simulation_foundation.sql
 npx wrangler d1 execute telc-prep --local --config backend/wrangler.toml --file=backend/src/db/migrations/0015_subscription_payment_index.sql
 npx wrangler d1 execute telc-prep --local --config backend/wrangler.toml --file=backend/src/db/migrations/0016_exam_readiness.sql
+npx wrangler d1 execute telc-prep --local --config backend/wrangler.toml --file=backend/src/db/migrations/0017_ai_provider_metadata.sql
+npx wrangler d1 execute telc-prep --local --config backend/wrangler.toml --file=backend/src/db/migrations/0018_speaking_recordings.sql
+npx wrangler d1 execute telc-prep --local --config backend/wrangler.toml --file=backend/src/db/migrations/0019_speaking_review.sql
+npx wrangler d1 execute telc-prep --local --config backend/wrangler.toml --file=backend/src/db/migrations/0020_growth_foundation.sql
+npx wrangler d1 execute telc-prep --local --config backend/wrangler.toml --file=backend/src/db/migrations/0021_exam_library.sql
+npx wrangler d1 execute telc-prep --local --config backend/wrangler.toml --file=backend/src/db/migrations/0022_pdf_b1_simulation.sql
+npx wrangler d1 execute telc-prep --local --config backend/wrangler.toml --file=backend/src/db/migrations/0023_reading_section_sessions.sql
 ```
+
+Migration `0021` imports the curated PDF exam library: one complete published B1
+reading exam (Teil 1–3 and Sprachbausteine 1–2), writing prompts and speaking
+prompts for Teil 1–3. The import is idempotent and keeps the admin JSON editor.
+Migration `0022` publishes a free 125-minute B1 simulation using that reading
+exam, a listening exercise and the Schwarzwald writing prompt.
 
 Seed plans:
 

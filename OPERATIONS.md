@@ -45,6 +45,12 @@ After recovery, rerun health checks and core smoke tests, reconcile payments cre
 
 The R2 bucket is private and proof downloads require payment-review permission. Define a production retention period before launch. Account deletion removes associated proof objects. R2 lifecycle rules and independent recovery policy must be configured in the Cloudflare account by the operator.
 
+## Speaking recording retention
+
+The Worker cron runs every day at 03:00 UTC and removes private speaking objects whose 30-day `delete_after` deadline has passed. Database metadata is deleted only after the corresponding R2 deletion succeeds; failures remain eligible for the next run and are reported in structured logs.
+
+An administrator with `users.manage` can run the same bounded cleanup manually with `POST /api/admin/retention/speaking/run`. Check the returned `scanned`, `deleted` and `failed` counters. Configure an R2 lifecycle rule as a production defense in depth while keeping application cleanup as the source of metadata consistency.
+
 ## Incident minimum record
 
 Record start/end time, impact, affected request IDs, detection source, mitigation, data correction, recovery bookmark where relevant, responsible owner and follow-up actions. Never paste passwords, reset tokens, session cookies, full payment proofs or learner writing into incident channels.

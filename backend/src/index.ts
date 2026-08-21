@@ -20,10 +20,15 @@ import progressRoutes from './routes/progress';
 import adminContentRoutes from './routes/admin-content';
 import adminSimulationRoutes from './routes/admin-simulations';
 import simulationRoutes from './routes/simulations';
+import speakingRoutes from './routes/speaking';
+import adminSpeakingRoutes from './routes/admin-speaking';
+import growthRoutes from './routes/growth';
+import { sendDueSimulationReminders } from './lib/reminders';
 import { authMiddleware } from './middleware/auth';
 import type { Env } from './types';
+import { purgeExpiredSpeakingRecordings } from './lib/speaking-retention';
 
-const app = new Hono<Env>();
+export const app = new Hono<Env>();
 
 app.use('*', async (c, next) => {
   const incomingId = c.req.header('X-Request-ID');
@@ -111,6 +116,9 @@ app.route('/api/progress', progressRoutes);
 app.route('/api/admin/content', adminContentRoutes);
 app.route('/api/admin/simulations', adminSimulationRoutes);
 app.route('/api/simulations', simulationRoutes);
+app.route('/api/speaking', speakingRoutes);
+app.route('/api/admin/speaking', adminSpeakingRoutes);
+app.route('/api/growth', growthRoutes);
 
 app.notFound((c) => c.json({ error: 'Not found', code: 'NOT_FOUND', requestId: c.get('requestId') }, 404));
 
@@ -120,4 +128,11 @@ app.onError((error, c) => {
   return c.json({ error: 'An unexpected error occurred', code: 'INTERNAL_ERROR', requestId }, 500);
 });
 
-export default app;
+const worker: ExportedHandler<Env['Bindings']> = {
+  fetch: (request, env, context) => app.fetch(request, env, context),
+  scheduled: (_controller, env, context) => {
+    context.waitUntil(Promise.all([purgeExpiredSpeakingRecordings(env), sendDueSimulationReminders(env)]).then(([retention, reminders]) => console.log(JSON.stringify({ event: 'scheduled_maintenance_completed', retention, reminders }))).catch((error) => console.error(JSON.stringify({ event: 'scheduled_maintenance_failed', message: error instanceof Error ? error.message : 'Unknown error' }))));
+  },
+};
+
+export default worker;

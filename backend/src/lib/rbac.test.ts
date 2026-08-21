@@ -16,12 +16,13 @@ test('support can review payments but cannot manage content or roles', () => {
 
 test('content editors are isolated from customer and payment data', () => {
   assert.equal(hasPermission('content_editor', 'content.manage'), true);
+  assert.equal(hasPermission('content_editor', 'speaking.review'), true);
   assert.equal(hasPermission('content_editor', 'users.view'), false);
   assert.equal(hasPermission('content_editor', 'payments.review'), false);
 });
 
 test('administrators have every declared permission and unknown roles have none', () => {
-  assert.equal(permissionsForRole('admin').length, 8);
+  assert.equal(permissionsForRole('admin').length, 9);
   assert.equal(hasPermission('admin', 'users.roles'), true);
   assert.deepEqual(permissionsForRole('unexpected'), []);
 });

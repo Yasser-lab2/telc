@@ -1,6 +1,7 @@
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { useI18n } from '../../lib/i18n';
+import { ThemeToggle } from '../ui/ThemeToggle';
 
 export function DashboardLayout() {
   const { user, logout } = useAuth();
@@ -9,12 +10,12 @@ export function DashboardLayout() {
   const initial = user?.displayName?.charAt(0).toUpperCase() ?? user?.email?.charAt(0).toUpperCase() ?? 'U';
   const mainLinks = [
     [t('dashboard'), '/dashboard'], [t('reading'), '/dashboard/lesen'], [t('listening'), '/dashboard/horen'],
-    [t('writing'), '/dashboard/schreiben'], [t('simulation'), '/dashboard/simulation'], [t('payment'), '/payment'],
+    [t('writing'), '/dashboard/schreiben'], [t('speaking'), '/dashboard/speaking'], [t('simulation'), '/dashboard/simulation'], [t('payment'), '/payment'],
   ];
 
   return (
     <div className="app-canvas min-h-screen text-ink" dir="ltr">
-      <header className="sticky top-0 z-20 border-b border-border/80 bg-bg/90 backdrop-blur-xl">
+      <header className="top-navigation sticky top-0 z-20 border-b border-border/80 bg-bg/90 backdrop-blur-xl">
         <a className="skip-link" href="#main-content">Aller au contenu principal</a>
         <nav aria-label={t('navigation')} className="mx-auto flex min-h-16 w-full max-w-7xl items-center justify-between gap-3 px-4 md:px-6">
           <Link to="/dashboard" className="flex shrink-0 items-center gap-3">
@@ -25,7 +26,7 @@ export function DashboardLayout() {
             </span>
           </Link>
 
-          <div className="hidden items-center gap-1 rounded-xl border border-border bg-surface p-1 shadow-sm lg:flex">
+          <div className="desktop-navigation hidden items-center gap-1 rounded-xl border border-border bg-surface p-1 shadow-sm lg:flex">
             {mainLinks.map(([label, to]) => (
               <NavLink
                 key={to}
@@ -45,6 +46,7 @@ export function DashboardLayout() {
           </div>
 
           <div className="flex items-center gap-2">
+            <ThemeToggle />
             <button type="button" onClick={() => setLocale(locale === 'fr' ? 'de' : 'fr')} className="nav-link" aria-label={t('language')}>{locale.toUpperCase()}</button>
             <Link
               to="/dashboard/profile"
@@ -66,7 +68,7 @@ export function DashboardLayout() {
         </nav>
       </header>
 
-      <nav aria-label={t('menu')} className="fixed inset-x-3 bottom-3 z-30 grid grid-cols-6 rounded-2xl border border-border bg-surface/95 p-1 shadow-xl backdrop-blur lg:hidden">
+      <nav aria-label={t('menu')} className="mobile-navigation fixed inset-x-3 bottom-3 z-30 grid grid-cols-7 rounded-2xl border border-border bg-surface/95 p-1 shadow-xl backdrop-blur lg:hidden">
         {mainLinks.map(([label, to]) => <NavLink key={to} to={to} className={({ isActive }) => `truncate rounded-xl px-1 py-3 text-center text-[11px] font-bold ${isActive ? 'bg-accent text-white' : 'text-muted'}`}>{label}</NavLink>)}
       </nav>
 

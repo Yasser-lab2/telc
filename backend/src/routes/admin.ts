@@ -3,16 +3,23 @@ import { Hono } from 'hono';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 import { getDb } from '../db';
-import { activityEvents, adminAuditLogs, aiSubmissions, attempts, contentItems, learnerProgress, manualPayments, paymentStatusEvents, plans, subscriptions, usageLimits, users } from '../db/schema';
+import { activityEvents, adminAuditLogs, aiSubmissions, attempts, contentItems, learnerProgress, manualPayments, paymentStatusEvents, plans, referralCodes, referrals, simulationSchedules, subscriptions, usageLimits, users } from '../db/schema';
 import { apiError } from '../lib/http';
 import { addDays, todayKey } from '../lib/time';
 import { adminMiddleware, requirePermission } from '../middleware/admin';
 import { authMiddleware } from '../middleware/auth';
 import type { Env } from '../types';
+import { purgeExpiredSpeakingRecordings } from '../lib/speaking-retention';
 
 const app = new Hono<Env>();
 
 app.use('*', authMiddleware, adminMiddleware);
+
+app.post('/retention/speaking/run', requirePermission('users.manage'), async (c) => {
+  const actor = c.get('user'); const result = await purgeExpiredSpeakingRecordings(c.env);
+  await audit(c.env.DB, actor.id, 'speaking_retention.executed', 'system', 'speaking-recordings', result);
+  return c.json({ ok: true, ...result });
+});
 
 app.get('/payments/pending', requirePermission('payments.review'), async (c) => {
   const db = getDb(c.env.DB);
@@ -109,6 +116,7 @@ app.post('/payments/:id/approve', requirePermission('payments.review'), async (c
     target: [usageLimits.userId, usageLimits.date],
     set: { aiCreditsUsed: 0, updatedAt: now },
   });
+  await db.update(referrals).set({ status: 'converted', convertedAt: now }).where(and(eq(referrals.referredUserId, row.payment.userId), eq(referrals.status, 'registered')));
 
   return c.json({ ok: true, expiresAt, alreadyProcessed: false });
 });
@@ -148,7 +156,7 @@ app.get('/stats', requirePermission('analytics.view'), async (c) => {
   const [
     [totalUsers], [newUsers7d], [activeLearners7d], [attemptsStarted7d], [attemptsCompleted7d], [averageScore7d],
     [activeSubs], [trialSubs], [expiredUsers], [pendingPayments], [approvedPayments30d], [rejectedPayments30d],
-    [revenue30d], [averageReviewHours], [aiToday], [aiLatency7d], [publishedContent], [draftContent],
+    [revenue30d], [averageReviewHours], [aiToday], [aiLatency7d], [publishedContent], [draftContent], [referralCount], [convertedReferrals], [scheduledSimulations], [remindersSent],
   ] = await Promise.all([
     db.select({ value: count() }).from(users),
     db.select({ value: count() }).from(users).where(gt(users.createdAt, sevenDaysAgo)),
@@ -168,6 +176,10 @@ app.get('/stats', requirePermission('analytics.view'), async (c) => {
     db.select({ value: sql<number | null>`avg(${aiSubmissions.latencyMs})` }).from(aiSubmissions).where(gt(aiSubmissions.submittedAt, sevenDaysAgo)),
     db.select({ value: count() }).from(contentItems).where(eq(contentItems.status, 'published')),
     db.select({ value: count() }).from(contentItems).where(eq(contentItems.status, 'draft')),
+    db.select({ value: count() }).from(referrals),
+    db.select({ value: count() }).from(referrals).where(eq(referrals.status, 'converted')),
+    db.select({ value: count() }).from(simulationSchedules).where(eq(simulationSchedules.status, 'scheduled')),
+    db.select({ value: count() }).from(simulationSchedules).where(gt(simulationSchedules.reminderSentAt, thirtyDaysAgo)),
   ]);
 
   return c.json({
@@ -183,6 +195,7 @@ app.get('/stats', requirePermission('analytics.view'), async (c) => {
     payments: { pending: pendingPayments.value, approved30d: approvedPayments30d.value, rejected30d: rejectedPayments30d.value, revenueMad30d: Number(revenue30d.value ?? 0), averageReviewHours30d: Math.round(Number(averageReviewHours.value ?? 0) * 10) / 10 },
     ai: { submissionsToday: aiToday.value, averageLatencyMs7d: Math.round(Number(aiLatency7d.value ?? 0)) },
     content: { published: publishedContent.value, drafts: draftContent.value },
+    growth: { referrals: referralCount.value, convertedReferrals: convertedReferrals.value, scheduledSimulations: scheduledSimulations.value, remindersSent30d: remindersSent.value },
   });
 });
 

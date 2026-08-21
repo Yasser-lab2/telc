@@ -39,6 +39,7 @@ export const userPreferences = sqliteTable('user_preferences', {
   locale: text('locale', { enum: ['fr', 'de'] }).default('fr').notNull(),
   emailStudyReminders: integer('email_study_reminders', { mode: 'boolean' }).default(true).notNull(),
   emailProductUpdates: integer('email_product_updates', { mode: 'boolean' }).default(false).notNull(),
+  personalizedRecommendations: integer('personalized_recommendations', { mode: 'boolean' }).default(true).notNull(),
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
   updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull(),
 });
@@ -148,6 +149,9 @@ export const aiSubmissions = sqliteTable('ai_submissions', {
   improvedText: text('improved_text'),
   feedbackAr: text('feedback_ar'),
   latencyMs: integer('latency_ms'),
+  aiProvider: text('ai_provider'),
+  aiModel: text('ai_model'),
+  promptVersion: text('prompt_version'),
   submittedAt: integer('submitted_at', { mode: 'timestamp' }),
 });
 
@@ -201,6 +205,7 @@ export const readingExamSessions = sqliteTable('reading_exam_sessions', {
   userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   examId: text('exam_id').notNull().references(() => readingExams.id, { onDelete: 'cascade' }),
   sharedAttemptId: text('shared_attempt_id').unique().references(() => attempts.id, { onDelete: 'set null' }),
+  practiceScope: text('practice_scope', { enum: ['all', 'teil1', 'teil2', 'teil3', 'sprach1', 'sprach2'] }).default('all').notNull(),
   startedAt: integer('started_at', { mode: 'timestamp' }),
   finishedAt: integer('finished_at', { mode: 'timestamp' }),
   status: text('status', { enum: ['in_progress', 'completed', 'abandoned'] }).default('in_progress').notNull(),
@@ -483,6 +488,25 @@ export const simulationBlueprints = sqliteTable('simulation_blueprints', {
   publishedAt: integer('published_at', { mode: 'timestamp' }),
 });
 
+export const speakingSubmissions = sqliteTable('speaking_submissions', {
+  id: text('id').primaryKey(),
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  contentItemId: text('content_item_id').notNull().references(() => contentItems.id, { onDelete: 'restrict' }),
+  objectKey: text('object_key').notNull().unique(),
+  fileName: text('file_name').notNull(),
+  mimeType: text('mime_type').notNull(),
+  sizeBytes: integer('size_bytes').notNull(),
+  durationSeconds: integer('duration_seconds'),
+  status: text('status', { enum: ['recorded', 'reviewed'] }).default('recorded').notNull(),
+  consentedAt: integer('consented_at', { mode: 'timestamp' }).notNull(),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
+  deleteAfter: integer('delete_after', { mode: 'timestamp' }).notNull(),
+  reviewedAt: integer('reviewed_at', { mode: 'timestamp' }),
+  feedbackJson: text('feedback_json'),
+  attemptId: text('attempt_id').unique().references(() => attempts.id, { onDelete: 'set null' }),
+  reviewerUserId: text('reviewer_user_id').references(() => users.id, { onDelete: 'set null' }),
+}, (table) => ({ userCreatedIdx: index('speaking_submissions_user_created_idx').on(table.userId, table.createdAt) }));
+
 export const simulationModules = sqliteTable('simulation_modules', {
   id: text('id').primaryKey(),
   simulationId: text('simulation_id').notNull().references(() => simulationBlueprints.id, { onDelete: 'cascade' }),
@@ -515,6 +539,12 @@ export const simulationModuleResults = sqliteTable('simulation_module_results', 
   completedAt: integer('completed_at', { mode: 'timestamp' }),
   percentage: real('percentage'),
 }, (table) => ({ sessionModuleIdx: uniqueIndex('simulation_module_results_session_module_idx').on(table.sessionId, table.moduleId) }));
+
+export const simulationSchedules = sqliteTable('simulation_schedules', {
+  id: text('id').primaryKey(), userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }), simulationId: text('simulation_id').notNull().references(() => simulationBlueprints.id, { onDelete: 'cascade' }), scheduledAt: integer('scheduled_at', { mode: 'timestamp' }).notNull(), reminderSentAt: integer('reminder_sent_at', { mode: 'timestamp' }), status: text('status', { enum: ['scheduled', 'cancelled', 'completed'] }).default('scheduled').notNull(), createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
+});
+export const referralCodes = sqliteTable('referral_codes', { code: text('code').primaryKey(), ownerUserId: text('owner_user_id').notNull().unique().references(() => users.id, { onDelete: 'cascade' }), createdAt: integer('created_at', { mode: 'timestamp' }).notNull() });
+export const referrals = sqliteTable('referrals', { id: text('id').primaryKey(), code: text('code').notNull().references(() => referralCodes.code, { onDelete: 'cascade' }), referrerUserId: text('referrer_user_id').notNull().references(() => users.id, { onDelete: 'cascade' }), referredUserId: text('referred_user_id').notNull().unique().references(() => users.id, { onDelete: 'cascade' }), status: text('status', { enum: ['registered', 'converted'] }).default('registered').notNull(), createdAt: integer('created_at', { mode: 'timestamp' }).notNull(), convertedAt: integer('converted_at', { mode: 'timestamp' }) });
 
 export const adminAuditLogs = sqliteTable(
   'admin_audit_logs',

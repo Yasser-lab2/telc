@@ -2,6 +2,9 @@ name = "telc-prep-api"
 main = "src/index.ts"
 compatibility_date = "2024-11-12"
 
+[triggers]
+crons = ["0 3 * * *"]
+
 [observability]
 enabled = true
 
@@ -23,3 +26,7 @@ database_id = "YOUR_D1_DATABASE_ID"
 [[r2_buckets]]
 binding = "PAYMENT_PROOFS"
 bucket_name = "telc-payment-proofs"
+
+[[r2_buckets]]
+binding = "SPEAKING_RECORDINGS"
+bucket_name = "telc-speaking-recordings"

@@ -5,15 +5,15 @@ export default {
   theme: {
     extend: {
       colors: {
-        accent: '#01696F',
-        accentDark: '#0C4E54',
-        bg: '#F7F6F2',
-        surface: '#F9F8F5',
-        border: '#D4D1CA',
-        text: '#28251D',
-        muted: '#7A7974',
-        ink: '#17222B',
-        accentSoft: '#DCEFED',
+        accent: 'rgb(var(--color-accent) / <alpha-value>)',
+        accentDark: 'rgb(var(--color-accent-dark) / <alpha-value>)',
+        bg: 'rgb(var(--color-bg) / <alpha-value>)',
+        surface: 'rgb(var(--color-surface) / <alpha-value>)',
+        border: 'rgb(var(--color-border) / <alpha-value>)',
+        text: 'rgb(var(--color-text) / <alpha-value>)',
+        muted: 'rgb(var(--color-muted) / <alpha-value>)',
+        ink: 'rgb(var(--color-ink) / <alpha-value>)',
+        accentSoft: 'rgb(var(--color-accent-soft) / <alpha-value>)',
         dark: '#08090C',
       },
       fontFamily: {

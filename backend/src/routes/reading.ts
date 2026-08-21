@@ -84,6 +84,10 @@ app.get('/exams/:id/history', async (c) => {
 
 app.post('/exams/:id/start', async (c) => {
   const user = c.get('user');
+  const requestedScope = ((await c.req.json().catch(() => null)) as { scope?: string } | null)?.scope ?? 'all';
+  const scopes = ['all', 'teil1', 'teil2', 'teil3', 'sprach1', 'sprach2'] as const;
+  if (!scopes.includes(requestedScope as (typeof scopes)[number])) return apiError(c, 400, 'Invalid practice scope', 'BAD_REQUEST');
+  const practiceScope = requestedScope as (typeof scopes)[number];
   const db = getDb(c.env.DB);
   const [exam] = await db
     .select()
@@ -126,7 +130,8 @@ app.post('/exams/:id/start', async (c) => {
     examId: exam.id,
     startedAt: new Date(),
     status: 'in_progress' as const,
-    scoreMax: exam.scoreMax,
+    scoreMax: practiceScope === 'all' ? exam.scoreMax : practiceScope.startsWith('sprach') ? 15 : 25,
+    practiceScope,
     sharedAttemptId: sharedAttempt.id,
   };
   await db.insert(readingExamSessions).values(session);
@@ -202,11 +207,12 @@ app.post('/sessions/:sessionId/submit', async (c) => {
     await db.update(readingExamSessions).set({ sharedAttemptId }).where(eq(readingExamSessions.id, session.id));
   }
 
-  const sectionRows = await db
+  const allSectionRows = await db
     .select()
     .from(readingExamSections)
     .where(eq(readingExamSections.examId, session.examId))
     .orderBy(asc(readingExamSections.orderIndex));
+  const sectionRows = session.practiceScope === 'all' ? allSectionRows : allSectionRows.filter((section) => section.sectionCode === session.practiceScope);
   const questions = await db
     .select()
     .from(readingQuestions)
@@ -247,7 +253,8 @@ app.post('/sessions/:sessionId/submit', async (c) => {
     if (answer) await db.update(readingUserAnswers).set({ isCorrect: correction.isCorrect }).where(eq(readingUserAnswers.id, answer.id));
   }
 
-  const percentage = session.scoreMax ? Math.round((score / session.scoreMax) * 100) : 0;
+  const scopedScoreMax = sectionRows.reduce((total, section) => total + section.pointsMax, 0);
+  const percentage = scopedScoreMax ? Math.round((score / scopedScoreMax) * 100) : 0;
   if (session.status === 'in_progress') {
     const finishedAt = new Date();
     await db.update(readingExamSessions).set({ status: 'completed', finishedAt, scoreObtained: score, percentage }).where(and(eq(readingExamSessions.id, session.id), eq(readingExamSessions.status, 'in_progress')));
@@ -257,7 +264,7 @@ app.post('/sessions/:sessionId/submit', async (c) => {
     const finishedAt = session.finishedAt ?? new Date();
     await db.update(attempts).set({
       status: 'completed', submittedAt: finishedAt, lastSavedAt: finishedAt,
-      scoreObtained: score, scoreMax: session.scoreMax ?? exam.scoreMax, percentage,
+      scoreObtained: score, scoreMax: scopedScoreMax, percentage,
     }).where(and(eq(attempts.id, sharedAttemptId), eq(attempts.status, 'in_progress')));
     await syncProgressAfterCompletion(c.env.DB, { userId: user.id, attemptId: sharedAttemptId, skill: 'reading', level: exam.level });
     const contentItemId = await ensureReadingCatalogItem(c.env.DB, exam);
@@ -266,7 +273,7 @@ app.post('/sessions/:sessionId/submit', async (c) => {
 
   return c.json({
     score,
-    scoreMax: session.scoreMax ?? 105,
+    scoreMax: scopedScoreMax,
     percentage,
     sectionSummary,
     corrections,

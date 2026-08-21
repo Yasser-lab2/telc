@@ -4,6 +4,10 @@ export type Env = {
   Bindings: {
     DB: D1Database;
     PAYMENT_PROOFS: R2Bucket;
+    SPEAKING_RECORDINGS: R2Bucket;
+    AI_PROVIDER?: string;
+    OPENROUTER_API_KEY?: string;
+    OPENROUTER_MODEL?: string;
     GEMINI_API_KEY?: string;
     RESEND_API_KEY?: string;
     EMAIL_FROM?: string;

@@ -23,6 +23,8 @@ import {
   userPreferences,
   users,
   writingDrafts,
+  referralCodes,
+  referrals,
 } from '../db/schema';
 import { authMiddleware } from '../middleware/auth';
 import { addDays } from '../lib/time';
@@ -40,6 +42,7 @@ const registerSchema = z.object({
   displayName: z.string().min(2).max(80),
   niveau: z.enum(['B1', 'B2', 'B1_B2']).default('B1'),
   acceptTerms: z.literal(true),
+  referralCode: z.string().trim().min(6).max(20).optional(),
 });
 
 const loginSchema = z.object({
@@ -73,6 +76,10 @@ app.post('/register', async (c) => {
     createdAt: now,
     lastSeenAt: now,
   });
+  if (body.data.referralCode) {
+    const [referrer] = await db.select().from(referralCodes).where(eq(referralCodes.code, body.data.referralCode.toUpperCase())).limit(1);
+    if (referrer) await db.insert(referrals).values({ id: nanoid(), code: referrer.code, referrerUserId: referrer.ownerUserId, referredUserId: userId, status: 'registered', createdAt: now }).onConflictDoNothing({ target: referrals.referredUserId });
+  }
 
   const consentContext = { ip: c.req.header('CF-Connecting-IP') ?? null, userAgent: c.req.header('User-Agent') ?? null };
   await db.insert(userConsents).values([
@@ -174,11 +181,11 @@ app.patch('/profile', authMiddleware, async (c) => {
 app.get('/preferences', authMiddleware, async (c) => {
   const user = c.get('user');
   const [preferences] = await getDb(c.env.DB).select().from(userPreferences).where(eq(userPreferences.userId, user.id)).limit(1);
-  return c.json({ preferences: preferences ?? { userId: user.id, locale: 'fr', emailStudyReminders: true, emailProductUpdates: false } });
+  return c.json({ preferences: preferences ?? { userId: user.id, locale: 'fr', emailStudyReminders: true, emailProductUpdates: false, personalizedRecommendations: true } });
 });
 
 app.patch('/preferences', authMiddleware, async (c) => {
-  const body = z.object({ locale: z.enum(['fr', 'de']), emailStudyReminders: z.boolean(), emailProductUpdates: z.boolean() }).safeParse(await c.req.json().catch(() => null));
+  const body = z.object({ locale: z.enum(['fr', 'de']), emailStudyReminders: z.boolean(), emailProductUpdates: z.boolean(), personalizedRecommendations: z.boolean() }).safeParse(await c.req.json().catch(() => null));
   if (!body.success) return apiError(c, 400, 'Invalid preferences', 'BAD_REQUEST');
   const user = c.get('user');
   const now = new Date();

@@ -6,6 +6,7 @@ import { router } from './router';
 import { I18nProvider } from './lib/i18n';
 import './styles.css';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { ThemeProvider } from './lib/theme';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -19,11 +20,13 @@ const queryClient = new QueryClient({
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <QueryClientProvider client={queryClient}>
-      <ErrorBoundary>
-        <I18nProvider>
-          <RouterProvider router={router} />
-        </I18nProvider>
-      </ErrorBoundary>
+      <ThemeProvider>
+        <ErrorBoundary>
+          <I18nProvider>
+            <RouterProvider router={router} />
+          </I18nProvider>
+        </ErrorBoundary>
+      </ThemeProvider>
     </QueryClientProvider>
   </React.StrictMode>,
 );

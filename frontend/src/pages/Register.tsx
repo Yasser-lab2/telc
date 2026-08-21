@@ -1,5 +1,5 @@
 import { FormEvent, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Link } from 'react-router-dom';
 import { Navbar } from '../components/layout/Navbar';
 import { Button } from '../components/ui/Button';
@@ -10,12 +10,13 @@ import { useAuth } from '../hooks/useAuth';
 export function Register() {
   const { register } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [form, setForm] = useState({ displayName: '', email: '', password: '', niveau: 'B1', acceptTerms: false });
 
   function submit(event: FormEvent) {
     event.preventDefault();
     if (!form.acceptTerms) return;
-    register.mutate({ ...form, acceptTerms: true }, { onSuccess: () => navigate('/dashboard') });
+    register.mutate({ ...form, acceptTerms: true, referralCode: searchParams.get('ref') ?? undefined }, { onSuccess: () => navigate('/dashboard') });
   }
 
   return (

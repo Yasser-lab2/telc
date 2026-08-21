@@ -21,6 +21,7 @@ import { ForgotPassword } from './pages/ForgotPassword';
 import { ResetPassword } from './pages/ResetPassword';
 import { VerifyEmail } from './pages/VerifyEmail';
 import { Legal } from './pages/Legal';
+import { Speaking } from './pages/Speaking';
 
 function ProtectedRoute({ children, requireSubscription = false }: { children: JSX.Element; requireSubscription?: boolean }) {
   const { user, subscription, isLoading } = useAuth();
@@ -71,6 +72,7 @@ export const router = createBrowserRouter([
       { path: 'schreiben', element: <ProtectedRoute requireSubscription><Schreiben /></ProtectedRoute> },
       { path: 'schreiben/:typeId', element: <ProtectedRoute requireSubscription><SchreibenEditor /></ProtectedRoute> },
       { path: 'simulation', element: <ProtectedRoute requireSubscription><Simulation /></ProtectedRoute> },
+      { path: 'speaking', element: <ProtectedRoute requireSubscription><Speaking /></ProtectedRoute> },
       { path: 'profile', element: <Profile /> },
     ],
   },

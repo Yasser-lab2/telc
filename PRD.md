@@ -439,6 +439,8 @@ All events need a written name, trigger, properties, owner and privacy classific
 - Evaluate an online Moroccan payment provider, reminders, referrals and carefully controlled AI personalization.
 - Run experiments only after event quality and baseline conversion are stable.
 
+**Phase 4 — Engineering complete (2026-08-12):** private speaking practice includes consent, authenticated storage, deletion, retention cleanup, audited prompt management and a permissioned human-review rubric feeding progress once. Learners can schedule simulations with opt-in idempotent reminders, share attributable referral links without automatic financial rewards, and disable score-based recommendations. Growth metrics are visible to admins. Online payment activation remains intentionally gated by the documented provider due-diligence and contractual decision in `PAYMENT_PROVIDER_EVALUATION.md`; manual CIH remains the fallback.
+
 ## 13. Professional launch acceptance criteria
 
 - No learner-facing metric, activity or filter is fake or non-functional.

@@ -1,7 +1,7 @@
 const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8787';
 
 export type AppRole = 'student' | 'support' | 'content_editor' | 'admin';
-export type Permission = 'admin.access' | 'analytics.view' | 'payments.review' | 'users.view' | 'users.manage' | 'users.roles' | 'subscriptions.manage' | 'content.manage';
+export type Permission = 'admin.access' | 'analytics.view' | 'payments.review' | 'users.view' | 'users.manage' | 'users.roles' | 'subscriptions.manage' | 'content.manage' | 'speaking.review';
 
 export type User = {
   id: string;
@@ -43,6 +43,7 @@ export type UserPreferences = {
   locale: 'fr' | 'de';
   emailStudyReminders: boolean;
   emailProductUpdates: boolean;
+  personalizedRecommendations: boolean;
   updatedAt?: string;
 };
 
@@ -54,6 +55,7 @@ export type AdminStats = {
   payments: { pending: number; approved30d: number; rejected30d: number; revenueMad30d: number; averageReviewHours30d: number };
   ai: { submissionsToday: number; averageLatencyMs7d: number };
   content: { published: number; drafts: number };
+  growth: { referrals: number; convertedReferrals: number; scheduledSimulations: number; remindersSent30d: number };
 };
 
 export type SimulationSession = {
@@ -173,7 +175,7 @@ async function apiForm<T>(path: string, body: FormData): Promise<T> {
 
 export const apiClient = {
   me: () => api<MeResponse>('/api/me'),
-  register: (payload: { email: string; password: string; displayName: string; niveau: string; acceptTerms: true }) =>
+  register: (payload: { email: string; password: string; displayName: string; niveau: string; acceptTerms: true; referralCode?: string }) =>
     api<{ user: User; subscription?: SubscriptionState; verificationRequired: boolean; devVerificationUrl?: string | null }>('/api/auth/register', { method: 'POST', body: JSON.stringify(payload) }),
   login: (payload: { email: string; password: string }) =>
     api<{ user: User; subscription?: SubscriptionState }>('/api/auth/login', { method: 'POST', body: JSON.stringify(payload) }),
@@ -243,7 +245,23 @@ export const apiClient = {
   updateStudyGoal: (weeklyTarget: number) => api<{ ok: true }>('/api/progress/study-goal', { method: 'PATCH', body: JSON.stringify({ weeklyTarget }) }),
   reviewMistake: ({ id, reviewed }: { id: string; reviewed: boolean }) => api<{ ok: true }>(`/api/progress/mistakes/${id}`, { method: 'PATCH', body: JSON.stringify({ reviewed }) }),
   dismissRecommendation: (contentId: string) => api<{ ok: true }>(`/api/progress/recommendations/${contentId}/dismiss`, { method: 'POST' }),
+  speaking: () => api<{ prompts: Array<{ id: string; title: string; level: string; description: string | null; instructions: string | null; durationMinutes: number | null }>; retentionDays: number }>('/api/speaking'),
+  speakingHistory: () => api<{ submissions: Array<{ id: string; title: string; createdAt: string; deleteAfter: string; durationSeconds: number | null; status: string; feedback: null | { pronunciation: number; fluency: number; vocabulary: number; taskAchievement: number; feedback: string; percentage: number } }> }>('/api/speaking/history/my'),
+  uploadSpeaking: (contentItemId: string, recording: Blob, durationSeconds: number, consent: boolean) => { const body = new FormData(); body.append('contentItemId', contentItemId); body.append('durationSeconds', String(durationSeconds)); body.append('consent', String(consent)); body.append('recording', recording, 'speaking.webm'); return apiForm<{ submissionId: string; deleteAfter: string }>('/api/speaking/recordings', body); },
+  deleteSpeaking: (id: string) => api<{ ok: true }>(`/api/speaking/recordings/${id}`, { method: 'DELETE' }),
+  speakingRecordingUrl: (id: string) => `${API_URL}/api/speaking/recordings/${id}`,
+  adminSpeaking: () => api<{ prompts: Array<{ id: string; title: string; level: 'B1' | 'B2'; description: string | null; instructions: string | null; durationMinutes: number | null; status: 'draft' | 'published' | 'archived' }> }>('/api/admin/speaking'),
+  createAdminSpeaking: (payload: { title: string; level: 'B1' | 'B2'; description?: string; instructions: string; durationMinutes: number; status: 'draft' | 'published' }) => api<{ id: string }>('/api/admin/speaking', { method: 'POST', body: JSON.stringify(payload) }),
+  updateAdminSpeaking: ({ id, payload }: { id: string; payload: { title: string; level: 'B1' | 'B2'; description?: string; instructions: string; durationMinutes: number; status: 'draft' | 'published' } }) => api<{ ok: true }>(`/api/admin/speaking/${id}`, { method: 'PUT', body: JSON.stringify(payload) }),
+  archiveAdminSpeaking: (id: string) => api<{ ok: true }>(`/api/admin/speaking/${id}/archive`, { method: 'POST' }),
+  adminSpeakingReviews: () => api<{ submissions: Array<{ id: string; title: string; level: string; learnerName: string; status: 'recorded' | 'reviewed'; createdAt: string; durationSeconds: number | null; feedback: null | { pronunciation: number; fluency: number; vocabulary: number; taskAchievement: number; feedback: string; percentage: number } }> }>('/api/admin/speaking/reviews'),
+  adminSpeakingAudioUrl: (id: string) => `${API_URL}/api/admin/speaking/reviews/${id}/audio`,
+  reviewAdminSpeaking: ({ id, review }: { id: string; review: { pronunciation: number; fluency: number; vocabulary: number; taskAchievement: number; feedback: string } }) => api<{ ok: true; percentage?: number; alreadyReviewed: boolean }>(`/api/admin/speaking/reviews/${id}`, { method: 'POST', body: JSON.stringify(review) }),
   simulations: () => api<{ simulations: Array<{ id: string; title: string; level: 'B1' | 'B2'; durationMinutes: number; instructions: string | null }> }>('/api/simulations'),
+  simulationSchedules: () => api<{ schedules: Array<{ id: string; simulationId: string; title: string; scheduledAt: string }> }>('/api/growth/schedules'),
+  scheduleSimulation: ({ simulationId, scheduledAt }: { simulationId: string; scheduledAt: string }) => api<{ id: string }>('/api/growth/schedules', { method: 'POST', body: JSON.stringify({ simulationId, scheduledAt }) }),
+  cancelSimulationSchedule: (id: string) => api<{ ok: true }>(`/api/growth/schedules/${id}`, { method: 'DELETE' }),
+  referral: () => api<{ code: string; shareUrl: string; referrals: Array<{ id: string; status: string; createdAt: string }> }>('/api/growth/referral'),
   activeSimulation: () => api<{ session: SimulationSession | null }>('/api/simulations/sessions/active'),
   simulationSession: (id: string) => api<{ session: SimulationSession; serverTime: string }>(`/api/simulations/sessions/${id}`),
   simulationHistory: () => api<{ history: Array<{ id: string; title: string; level: string; status: string; startedAt: string; finishedAt: string | null; percentage: number | null }> }>('/api/simulations/history/my'),
@@ -256,14 +274,14 @@ export const apiClient = {
   readingExams: () => api<{ exams: ReadingExamListItem[] }>('/api/reading/exams'),
   readingExam: (id: string) => api<{ exam: ReadingExamDetail }>(`/api/reading/exams/${id}`),
   activeReadingSession: (id: string) => api<{
-    session: { id: string; startedAt: string; status: string } | null;
+    session: { id: string; startedAt: string; status: string; practiceScope: 'all' | 'teil1' | 'teil2' | 'teil3' | 'sprach1' | 'sprach2' } | null;
     answers: Array<{ questionId: string; selectedOptionCode: string; timeSpentSeconds: number | null }>;
     serverTime?: string;
   }>(`/api/reading/exams/${id}/session`),
   readingHistory: (id: string) => api<{ history: Array<{
     id: string; startedAt: string; finishedAt: string; scoreObtained: number; scoreMax: number; percentage: number;
   }> }>(`/api/reading/exams/${id}/history`),
-  startReadingExam: (id: string) => api<{ session: { id: string; startedAt: string; status: string } }>(`/api/reading/exams/${id}/start`, { method: 'POST' }),
+  startReadingExam: (id: string, scope: 'all' | 'teil1' | 'teil2' | 'teil3' | 'sprach1' | 'sprach2' = 'all') => api<{ session: { id: string; startedAt: string; status: string; practiceScope: typeof scope } }>(`/api/reading/exams/${id}/start`, { method: 'POST', body: JSON.stringify({ scope }) }),
   saveReadingAnswers: (sessionId: string, answers: Array<{ questionId: string; selectedOptionCode: string }>) =>
     api<{ ok: true }>(`/api/reading/sessions/${sessionId}/answers`, {
       method: 'POST',

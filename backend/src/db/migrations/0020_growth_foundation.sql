@@ -1,0 +1,7 @@
+ALTER TABLE user_preferences ADD COLUMN personalized_recommendations INTEGER NOT NULL DEFAULT 1;
+CREATE TABLE IF NOT EXISTS simulation_schedules (id TEXT PRIMARY KEY NOT NULL, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, simulation_id TEXT NOT NULL REFERENCES simulation_blueprints(id) ON DELETE CASCADE, scheduled_at INTEGER NOT NULL, reminder_sent_at INTEGER, status TEXT NOT NULL DEFAULT 'scheduled' CHECK (status IN ('scheduled','cancelled','completed')), created_at INTEGER NOT NULL);
+CREATE INDEX IF NOT EXISTS simulation_schedules_due_idx ON simulation_schedules(status, scheduled_at, reminder_sent_at);
+CREATE INDEX IF NOT EXISTS simulation_schedules_user_idx ON simulation_schedules(user_id, scheduled_at);
+CREATE TABLE IF NOT EXISTS referral_codes (code TEXT PRIMARY KEY NOT NULL, owner_user_id TEXT NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE, created_at INTEGER NOT NULL);
+CREATE TABLE IF NOT EXISTS referrals (id TEXT PRIMARY KEY NOT NULL, code TEXT NOT NULL REFERENCES referral_codes(code) ON DELETE CASCADE, referrer_user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, referred_user_id TEXT NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE, status TEXT NOT NULL DEFAULT 'registered' CHECK (status IN ('registered','converted')), created_at INTEGER NOT NULL, converted_at INTEGER);
+CREATE INDEX IF NOT EXISTS referrals_referrer_idx ON referrals(referrer_user_id, created_at);
