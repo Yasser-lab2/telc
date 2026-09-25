@@ -36,7 +36,7 @@ export const rateLimits = sqliteTable('rate_limits', {
 
 export const userPreferences = sqliteTable('user_preferences', {
   userId: text('user_id').primaryKey().references(() => users.id, { onDelete: 'cascade' }),
-  locale: text('locale', { enum: ['fr', 'de'] }).default('fr').notNull(),
+  locale: text('locale', { enum: ['fr'] }).default('fr').notNull(),
   emailStudyReminders: integer('email_study_reminders', { mode: 'boolean' }).default(true).notNull(),
   emailProductUpdates: integer('email_product_updates', { mode: 'boolean' }).default(false).notNull(),
   personalizedRecommendations: integer('personalized_recommendations', { mode: 'boolean' }).default(true).notNull(),

@@ -7,6 +7,7 @@ import { Dashboard } from './pages/Dashboard';
 import { Home } from './pages/Home';
 import { Horen } from './pages/Horen';
 import { HorenExercise } from './pages/HorenExercise';
+import { HorenImportedExercise } from './pages/HorenImportedExercise';
 import { Lesen } from './pages/Lesen';
 import { LesenExercise } from './pages/LesenExercise';
 import { Login } from './pages/Login';
@@ -68,6 +69,7 @@ export const router = createBrowserRouter([
       { path: 'lesen', element: <ProtectedRoute requireSubscription><Lesen /></ProtectedRoute> },
       { path: 'lesen/:themeId', element: <ProtectedRoute requireSubscription><LesenExercise /></ProtectedRoute> },
       { path: 'horen', element: <ProtectedRoute requireSubscription><Horen /></ProtectedRoute> },
+      { path: 'horen/imported/:teil/:exerciseId', element: <ProtectedRoute requireSubscription><HorenImportedExercise /></ProtectedRoute> },
       { path: 'horen/:audioId', element: <ProtectedRoute requireSubscription><HorenExercise /></ProtectedRoute> },
       { path: 'schreiben', element: <ProtectedRoute requireSubscription><Schreiben /></ProtectedRoute> },
       { path: 'schreiben/:typeId', element: <ProtectedRoute requireSubscription><SchreibenEditor /></ProtectedRoute> },

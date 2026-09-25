@@ -6,7 +6,7 @@ import { ThemeToggle } from '../ui/ThemeToggle';
 
 export function Navbar() {
   const { user, logout } = useAuth();
-  const { locale, setLocale, t } = useI18n();
+  const { t } = useI18n();
   function focusMain(event: React.MouseEvent<HTMLAnchorElement>) {
     const main = document.querySelector('main');
     if (!main) return;
@@ -26,9 +26,6 @@ export function Navbar() {
           <NavLink to="/pricing" className="nav-link hidden sm:inline-flex">
             {t('pricing')}
           </NavLink>
-          <button type="button" onClick={() => setLocale(locale === 'fr' ? 'de' : 'fr')} className="nav-link" aria-label={t('language')}>
-            {locale.toUpperCase()}
-          </button>
           <ThemeToggle />
           {user ? (
             <>

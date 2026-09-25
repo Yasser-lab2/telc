@@ -5,7 +5,7 @@ import { ThemeToggle } from '../ui/ThemeToggle';
 
 export function DashboardLayout() {
   const { user, logout } = useAuth();
-  const { locale, setLocale, t } = useI18n();
+  const { t } = useI18n();
   const location = useLocation();
   const initial = user?.displayName?.charAt(0).toUpperCase() ?? user?.email?.charAt(0).toUpperCase() ?? 'U';
   const mainLinks = [
@@ -47,7 +47,6 @@ export function DashboardLayout() {
 
           <div className="flex items-center gap-2">
             <ThemeToggle />
-            <button type="button" onClick={() => setLocale(locale === 'fr' ? 'de' : 'fr')} className="nav-link" aria-label={t('language')}>{locale.toUpperCase()}</button>
             <Link
               to="/dashboard/profile"
               aria-label={t('profile')}

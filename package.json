@@ -15,6 +15,16 @@
     "test:a11y": "node scripts/check-accessibility.mjs",
     "db:seed": "npm run db:seed -w backend",
     "db:demo": "npm run db:demo -w backend",
-    "admin:create": "npm run admin:create -w backend"
+    "admin:create": "npm run admin:create -w backend",
+    "scrape:zertify:horen:teil1": "node scripts/inspect-zertify-horen.mjs teil1",
+    "scrape:zertify:horen:teil2": "node scripts/inspect-zertify-horen.mjs teil2",
+    "scrape:zertify:horen:teil3": "node scripts/inspect-zertify-horen.mjs teil3",
+    "normalize:zertify:horen:teil1": "node scripts/normalize-zertify-horen.mjs 1",
+    "normalize:zertify:horen:teil2": "node scripts/normalize-zertify-horen.mjs 2",
+    "normalize:zertify:horen:teil3": "node scripts/normalize-zertify-horen.mjs 3",
+    "puppeteer:install": "puppeteer browsers install chrome"
+  },
+  "devDependencies": {
+    "puppeteer": "23.11.1"
   }
 }

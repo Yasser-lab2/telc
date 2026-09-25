@@ -10,6 +10,7 @@ import {
   readingQuestions,
   readingUserAnswers,
   attempts,
+  contentItems,
 } from '../db/schema';
 import { apiError } from '../lib/http';
 import { getCurrentPlan } from '../lib/subscriptions';
@@ -23,13 +24,77 @@ const app = new Hono<Env>();
 app.use('*', authMiddleware);
 
 app.get('/exams', async (c) => {
-  const exams = await getDb(c.env.DB)
+  const user = c.get('user');
+  const db = getDb(c.env.DB);
+  const exams = await db
     .select()
     .from(readingExams)
     .where(eq(readingExams.status, 'published'))
     .orderBy(asc(readingExams.createdAt));
 
-  return c.json({ exams });
+  const sections = exams.length
+    ? await db
+        .select({ examId: readingExamSections.examId, sectionCode: readingExamSections.sectionCode })
+        .from(readingExamSections)
+        .where(inArray(readingExamSections.examId, exams.map((exam) => exam.id)))
+        .orderBy(asc(readingExamSections.orderIndex))
+    : [];
+  const sectionCodesByExam = new Map<string, string[]>();
+  for (const section of sections) {
+    const current = sectionCodesByExam.get(section.examId) ?? [];
+    if (!current.includes(section.sectionCode)) current.push(section.sectionCode);
+    sectionCodesByExam.set(section.examId, current);
+  }
+
+  const catalogRows = exams.length
+    ? await db
+        .select({ id: contentItems.id, metadataJson: contentItems.metadataJson })
+        .from(contentItems)
+        .where(inArray(contentItems.id, exams.map((exam) => `legacy-reading:${exam.id}`)))
+    : [];
+  const attemptRows = exams.length
+    ? await db
+        .select({ contentItemId: attempts.contentItemId, status: attempts.status, percentage: attempts.percentage })
+        .from(attempts)
+        .where(and(eq(attempts.userId, user.id), inArray(attempts.contentItemId, exams.map((exam) => `legacy-reading:${exam.id}`))))
+    : [];
+  const progressByExam = new Map<string, { completed: number; total: number; percentage: number }>();
+  for (const attempt of attemptRows) {
+    const examId = attempt.contentItemId.replace('legacy-reading:', '');
+    const current = progressByExam.get(examId) ?? { completed: 0, total: 1, percentage: 0 };
+    if (attempt.status === 'completed') {
+      current.completed = 1;
+      current.percentage = Math.max(current.percentage, Number(attempt.percentage ?? 0));
+    }
+    progressByExam.set(examId, current);
+  }
+
+  const metadataByExam = new Map(catalogRows.map((item) => {
+    try {
+      const metadata = item.metadataJson ? JSON.parse(item.metadataJson) as Record<string, unknown> : {};
+      return [item.id.replace('legacy-reading:', ''), metadata] as const;
+    } catch {
+      return [item.id.replace('legacy-reading:', ''), {}] as const;
+    }
+  }));
+
+  const examsWithStructure = exams.map((exam) => {
+    const sectionCodes = sectionCodesByExam.get(exam.id) ?? [];
+    const metadata = metadataByExam.get(exam.id) ?? {};
+    const titleAr = typeof metadata.titleAr === 'string' ? metadata.titleAr : null;
+    return {
+      ...exam,
+      titleAr,
+      kind: sectionCodes.length === 5 ? 'exam' : 'exercise',
+      variantCount: typeof metadata.variantCount === 'number' ? metadata.variantCount : 3,
+      progress: progressByExam.get(exam.id) ?? { completed: 0, total: 1, percentage: 0 },
+      sectionCodes,
+      sectionCount: sectionCodes.length,
+      isComplete: sectionCodes.length === 5,
+    };
+  });
+
+  return c.json({ exams: examsWithStructure });
 });
 
 app.get('/exams/:id', async (c) => {
@@ -184,6 +249,24 @@ app.post('/sessions/:sessionId/answers', async (c) => {
   return c.json({ ok: true });
 });
 
+app.post('/sessions/:sessionId/abandon', async (c) => {
+  const user = c.get('user');
+  const db = getDb(c.env.DB);
+  const [session] = await db
+    .select()
+    .from(readingExamSessions)
+    .where(and(eq(readingExamSessions.id, c.req.param('sessionId')), eq(readingExamSessions.userId, user.id)))
+    .limit(1);
+  if (!session) return apiError(c, 404, 'Session not found', 'NOT_FOUND');
+  if (session.status === 'completed') return apiError(c, 400, 'Completed sessions cannot be abandoned', 'BAD_REQUEST');
+  const finishedAt = new Date();
+  await db.update(readingExamSessions).set({ status: 'abandoned', finishedAt }).where(eq(readingExamSessions.id, session.id));
+  if (session.sharedAttemptId) {
+    await db.update(attempts).set({ status: 'abandoned', lastSavedAt: finishedAt }).where(and(eq(attempts.id, session.sharedAttemptId), eq(attempts.status, 'in_progress')));
+  }
+  return c.json({ ok: true });
+});
+
 app.post('/sessions/:sessionId/submit', async (c) => {
   const user = c.get('user');
   const db = getDb(c.env.DB);
@@ -280,6 +363,25 @@ app.post('/sessions/:sessionId/submit', async (c) => {
   });
 });
 
+async function getReadingMetadata(dbBinding: D1Database, examId: string) {
+  const [item] = await getDb(dbBinding)
+    .select({ metadataJson: contentItems.metadataJson })
+    .from(contentItems)
+    .where(eq(contentItems.id, `legacy-reading:${examId}`))
+    .limit(1);
+  if (!item?.metadataJson) return { titleAr: null, kind: null, variantCount: 3 };
+  try {
+    const metadata = JSON.parse(item.metadataJson) as Record<string, unknown>;
+    return {
+      titleAr: typeof metadata.titleAr === 'string' ? metadata.titleAr : null,
+      kind: metadata.sectionCode ? 'exercise' : 'exam',
+      variantCount: typeof metadata.variantCount === 'number' ? metadata.variantCount : 3,
+    };
+  } catch {
+    return { titleAr: null, kind: null, variantCount: 3 };
+  }
+}
+
 async function createReadingAttempt(dbBinding: D1Database, userId: string, contentItemId: string) {
   const now = new Date();
   const attempt = {
@@ -312,9 +414,11 @@ export async function loadExamDetail(dbBinding: D1Database, examId: string, incl
         .where(inArray(readingOptions.questionId, questions.map((question) => question.id)))
         .orderBy(asc(readingOptions.orderIndex))
     : [];
+  const metadata = await getReadingMetadata(dbBinding, examId);
 
   return {
     ...exam,
+    ...metadata,
     sections: sections.map((section) => ({
       ...section,
       extraData: section.extraDataJson ? JSON.parse(section.extraDataJson) : null,

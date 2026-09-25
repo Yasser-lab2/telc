@@ -1,17 +1,12 @@
-import { createContext, useContext, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 
-export type Locale = 'fr' | 'de';
+export type Locale = 'fr';
 
 const messages = {
   fr: {
     pricing: 'Tarifs', dashboard: 'Aujourd’hui', login: 'Connexion', register: 'Créer un compte',
     logout: 'Déconnexion', reading: 'Lire', listening: 'Écouter', writing: 'Écrire', speaking: 'Parler', simulation: 'Simulation',
     profile: 'Profil', payment: 'Paiement', admin: 'Administration', menu: 'Menu', language: 'Langue', navigation: 'Navigation principale',
-  },
-  de: {
-    pricing: 'Preise', dashboard: 'Heute', login: 'Anmelden', register: 'Konto erstellen',
-    logout: 'Abmelden', reading: 'Lesen', listening: 'Hören', writing: 'Schreiben', speaking: 'Sprechen', simulation: 'Prüfung',
-    profile: 'Profil', payment: 'Zahlung', admin: 'Verwaltung', menu: 'Menü', language: 'Sprache', navigation: 'Hauptnavigation',
   },
 } as const;
 
@@ -21,17 +16,21 @@ type I18nValue = { locale: Locale; setLocale: (locale: Locale) => void; t: (key:
 const I18nContext = createContext<I18nValue | null>(null);
 
 function initialLocale(): Locale {
-  const saved = window.localStorage.getItem('telc-locale');
-  return saved === 'de' ? 'de' : 'fr';
+  return 'fr';
 }
 
 export function I18nProvider({ children }: { children: ReactNode }) {
   const [locale, setLocaleState] = useState<Locale>(initialLocale);
+  useEffect(() => {
+    document.documentElement.lang = locale;
+    document.documentElement.dir = 'ltr';
+  }, [locale]);
   const value = useMemo<I18nValue>(() => ({
     locale,
     setLocale: (next) => {
       window.localStorage.setItem('telc-locale', next);
       document.documentElement.lang = next;
+      document.documentElement.dir = 'ltr';
       setLocaleState(next);
     },
     t: (key) => messages[locale][key],

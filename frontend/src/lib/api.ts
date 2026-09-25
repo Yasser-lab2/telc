@@ -40,7 +40,7 @@ export type Plan = {
 
 export type UserPreferences = {
   userId?: string;
-  locale: 'fr' | 'de';
+  locale: 'fr';
   emailStudyReminders: boolean;
   emailProductUpdates: boolean;
   personalizedRecommendations: boolean;
@@ -78,6 +78,8 @@ export type Question = {
   answerIndex: number;
 };
 
+export type ReadingVariant = 'original' | 'modified1' | 'modified2';
+
 export type ReadingExamListItem = {
   id: string;
   title: string;
@@ -88,6 +90,13 @@ export type ReadingExamListItem = {
   status: 'draft' | 'published';
   createdAt: string | null;
   updatedAt: string | null;
+  sectionCodes: Array<'teil1' | 'teil2' | 'teil3' | 'sprach1' | 'sprach2'>;
+  sectionCount: number;
+  isComplete: boolean;
+  titleAr?: string | null;
+  kind?: 'exercise' | 'exam';
+  variantCount?: number;
+  progress?: { completed: number; total: number; percentage: number };
 };
 
 export type ReadingOption = {
@@ -289,6 +298,8 @@ export const apiClient = {
     }),
   submitReadingSession: (sessionId: string) =>
     api<ReadingSubmitResult>(`/api/reading/sessions/${sessionId}/submit`, { method: 'POST' }),
+  abandonReadingSession: (sessionId: string) =>
+    api<{ ok: true }>(`/api/reading/sessions/${sessionId}/abandon`, { method: 'POST' }),
   adminReadingExams: () => api<{ exams: ReadingExamListItem[] }>('/api/admin/reading/exams'),
   createAdminReadingExam: (payload: {
     title: string;

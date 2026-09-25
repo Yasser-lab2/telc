@@ -22,7 +22,7 @@ export function Profile() {
   const setAuth = useAuthStore((state) => state.setAuth);
   const [profile, setProfile] = useState<{ displayName: string; niveau: 'B1' | 'B2' | 'B1_B2' }>({ displayName: '', niveau: 'B1' });
   const [deletePassword, setDeletePassword] = useState('');
-  const [preferenceForm, setPreferenceForm] = useState({ locale: 'fr' as 'fr' | 'de', emailStudyReminders: true, emailProductUpdates: false, personalizedRecommendations: true });
+  const [preferenceForm, setPreferenceForm] = useState({ locale: 'fr' as const, emailStudyReminders: true, emailProductUpdates: false, personalizedRecommendations: true });
   const referral = useQuery({ queryKey: ['referral'], queryFn: apiClient.referral });
   const sessions = useQuery({ queryKey: ['account-sessions'], queryFn: apiClient.sessions });
   const preferences = useQuery({ queryKey: ['account-preferences'], queryFn: apiClient.preferences });
@@ -158,11 +158,6 @@ export function Profile() {
         <p className="mt-1 text-sm text-muted">Ces choix sont enregistrés dans votre compte et appliqués sur vos appareils.</p>
         {preferences.isLoading ? <p className="mt-4 text-sm text-muted">Chargement…</p> : (
           <form className="mt-5 space-y-5" onSubmit={(event) => { event.preventDefault(); savePreferences.mutate(preferenceForm); }}>
-            <label className="block max-w-sm text-sm font-bold">Langue de l’interface
-              <select className="mt-2 min-h-11 w-full rounded-xl border border-border bg-white px-3 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/20" value={preferenceForm.locale} onChange={(event) => setPreferenceForm({ ...preferenceForm, locale: event.target.value as 'fr' | 'de' })}>
-                <option value="fr">Français</option><option value="de">Deutsch</option>
-              </select>
-            </label>
             <label className="flex items-start gap-3 rounded-xl border border-border bg-white p-4">
               <input className="mt-1 h-4 w-4 accent-accent" type="checkbox" checked={preferenceForm.emailStudyReminders} onChange={(event) => setPreferenceForm({ ...preferenceForm, emailStudyReminders: event.target.checked })} />
               <span><span className="block font-bold">Rappels d’étude</span><span className="text-sm text-muted">Recevoir des rappels pour maintenir votre rythme de préparation.</span></span>

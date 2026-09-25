@@ -48,6 +48,7 @@ npx wrangler d1 execute telc-prep --local --config backend/wrangler.toml --file=
 npx wrangler d1 execute telc-prep --local --config backend/wrangler.toml --file=backend/src/db/migrations/0021_exam_library.sql
 npx wrangler d1 execute telc-prep --local --config backend/wrangler.toml --file=backend/src/db/migrations/0022_pdf_b1_simulation.sql
 npx wrangler d1 execute telc-prep --local --config backend/wrangler.toml --file=backend/src/db/migrations/0023_reading_section_sessions.sql
+npx wrangler d1 execute telc-prep --local --config backend/wrangler.toml --file=backend/src/db/migrations/0024_zertify_lesen_catalog.sql
 ```
 
 Migration `0021` imports the curated PDF exam library: one complete published B1
@@ -55,6 +56,10 @@ reading exam (Teil 1–3 and Sprachbausteine 1–2), writing prompts and speakin
 prompts for Teil 1–3. The import is idempotent and keeps the admin JSON editor.
 Migration `0022` publishes a free 125-minute B1 simulation using that reading
 exam, a listening exercise and the Schwarzwald writing prompt.
+Migration `0024` adds a second published B2 Lesen exam, structured with the same
+five linked sections as the public Zertify sample (Teil 1–3 and Sprachbausteine
+1–2). The Lesen catalog uses those linked section codes to make each category
+tab show the matching two complete exams.
 
 Seed plans:
 
@@ -96,6 +101,24 @@ Payment proofs use the private `PAYMENT_PROOFS` R2 binding. Wrangler simulates t
 
 ```bash
 npx wrangler r2 bucket create telc-payment-proofs
+```
+
+### Extraction Hören de Zertify
+
+Exécutez une commande séparée pour chaque onglet :
+
+```bash
+npm run scrape:zertify:horen:teil1
+npm run scrape:zertify:horen:teil2
+npm run scrape:zertify:horen:teil3
+```
+
+À chaque lancement, connectez-vous dans le navigateur, ouvrez l’onglet Teil demandé et son exercice, puis appuyez sur Entrée dans le terminal. Le script utilise `#hoeren-pdf-content` et produit respectivement `scraped/zertify-horen-teil1.json`, `scraped/zertify-horen-teil2.json` et `scraped/zertify-horen-teil3.json`, avec une capture PNG pour chaque partie.
+
+Normalisez ensuite la partie extraite pour le frontend avec la commande correspondante, par exemple :
+
+```bash
+npm run normalize:zertify:horen:teil2
 ```
 
 ## Checks

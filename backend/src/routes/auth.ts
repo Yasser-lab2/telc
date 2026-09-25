@@ -181,11 +181,12 @@ app.patch('/profile', authMiddleware, async (c) => {
 app.get('/preferences', authMiddleware, async (c) => {
   const user = c.get('user');
   const [preferences] = await getDb(c.env.DB).select().from(userPreferences).where(eq(userPreferences.userId, user.id)).limit(1);
-  return c.json({ preferences: preferences ?? { userId: user.id, locale: 'fr', emailStudyReminders: true, emailProductUpdates: false, personalizedRecommendations: true } });
+  const normalizedPreferences = preferences ? { ...preferences, locale: 'fr' as const } : preferences;
+  return c.json({ preferences: normalizedPreferences ?? { userId: user.id, locale: 'fr', emailStudyReminders: true, emailProductUpdates: false, personalizedRecommendations: true } });
 });
 
 app.patch('/preferences', authMiddleware, async (c) => {
-  const body = z.object({ locale: z.enum(['fr', 'de']), emailStudyReminders: z.boolean(), emailProductUpdates: z.boolean(), personalizedRecommendations: z.boolean() }).safeParse(await c.req.json().catch(() => null));
+  const body = z.object({ locale: z.literal('fr'), emailStudyReminders: z.boolean(), emailProductUpdates: z.boolean(), personalizedRecommendations: z.boolean() }).safeParse(await c.req.json().catch(() => null));
   if (!body.success) return apiError(c, 400, 'Invalid preferences', 'BAD_REQUEST');
   const user = c.get('user');
   const now = new Date();
