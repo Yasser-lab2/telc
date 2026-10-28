@@ -49,6 +49,11 @@ npx wrangler d1 execute telc-prep --local --config backend/wrangler.toml --file=
 npx wrangler d1 execute telc-prep --local --config backend/wrangler.toml --file=backend/src/db/migrations/0022_pdf_b1_simulation.sql
 npx wrangler d1 execute telc-prep --local --config backend/wrangler.toml --file=backend/src/db/migrations/0023_reading_section_sessions.sql
 npx wrangler d1 execute telc-prep --local --config backend/wrangler.toml --file=backend/src/db/migrations/0024_zertify_lesen_catalog.sql
+npx wrangler d1 execute telc-prep --local --config backend/wrangler.toml --file=backend/src/db/migrations/0025_zertify_lesen_slides.sql
+npx wrangler d1 execute telc-prep --local --config backend/wrangler.toml --file=backend/src/db/migrations/0026_original_lesen_practice_pack.sql
+npx wrangler d1 execute telc-prep --local --config backend/wrangler.toml --file=backend/src/db/migrations/0027_original_lesen_answer_key_repair.sql
+npx wrangler d1 execute telc-prep --local --config backend/wrangler.toml --file=backend/src/db/migrations/0028_reading_catalog_cleanup.sql
+npx wrangler d1 execute telc-prep --local --config backend/wrangler.toml --file=backend/src/db/migrations/0029_zertify_lesen_free_catalog.sql
 ```
 
 Migration `0021` imports the curated PDF exam library: one complete published B1
@@ -58,8 +63,15 @@ Migration `0022` publishes a free 125-minute B1 simulation using that reading
 exam, a listening exercise and the Schwarzwald writing prompt.
 Migration `0024` adds a second published B2 Lesen exam, structured with the same
 five linked sections as the public Zertify sample (Teil 1–3 and Sprachbausteine
-1–2). The Lesen catalog uses those linked section codes to make each category
-tab show the matching two complete exams.
+1–2). Migrations `0025`–`0028` add the presentation metadata and keep the
+original practice pack. Migration `0029` imports the 41 unique free models from
+`opencode-work/zertify/*.json` (13 complete exams and 28 part exercises).
+
+Regenerate the deterministic import after updating the extracted JSON:
+
+```bash
+npm run generate:zertify:lesen
+```
 
 Seed plans:
 

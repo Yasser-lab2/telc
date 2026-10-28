@@ -16,6 +16,7 @@
     "db:seed": "npm run db:seed -w backend",
     "db:demo": "npm run db:demo -w backend",
     "admin:create": "npm run admin:create -w backend",
+    "generate:zertify:lesen": "node scripts/generate-zertify-reading-migration.mjs",
     "scrape:zertify:horen:teil1": "node scripts/inspect-zertify-horen.mjs teil1",
     "scrape:zertify:horen:teil2": "node scripts/inspect-zertify-horen.mjs teil2",
     "scrape:zertify:horen:teil3": "node scripts/inspect-zertify-horen.mjs teil3",

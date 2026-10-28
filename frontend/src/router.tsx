@@ -23,12 +23,13 @@ import { ResetPassword } from './pages/ResetPassword';
 import { VerifyEmail } from './pages/VerifyEmail';
 import { Legal } from './pages/Legal';
 import { Speaking } from './pages/Speaking';
+import { hasActiveSubscription } from './lib/api';
 
 function ProtectedRoute({ children, requireSubscription = false }: { children: JSX.Element; requireSubscription?: boolean }) {
   const { user, subscription, isLoading } = useAuth();
   if (isLoading) return <LoadingSpinner />;
   if (!user) return <Navigate to="/login" replace />;
-  if (requireSubscription && !subscription?.isActive) return <Navigate to="/pricing" replace />;
+  if (requireSubscription && !hasActiveSubscription(subscription)) return <Navigate to="/pricing" replace />;
   return children;
 }
 

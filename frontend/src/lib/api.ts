@@ -16,13 +16,19 @@ export type User = {
 export type SubscriptionState =
   | {
       isActive: true;
-      status: 'trial' | 'active';
+      status: 'active';
       planId: string;
       planName: string;
       expiresAt: string;
       aiCreditsPerDay: number;
     }
   | { isActive: false };
+
+export type ActiveSubscription = Extract<SubscriptionState, { isActive: true }>;
+
+export function hasActiveSubscription(subscription: SubscriptionState | null | undefined): subscription is ActiveSubscription {
+  return subscription?.isActive === true && subscription.status === 'active';
+}
 
 export type MeResponse = {
   user: User;
@@ -40,7 +46,7 @@ export type Plan = {
 
 export type UserPreferences = {
   userId?: string;
-  locale: 'fr';
+  locale: 'fr' | 'en' | 'ar';
   emailStudyReminders: boolean;
   emailProductUpdates: boolean;
   personalizedRecommendations: boolean;

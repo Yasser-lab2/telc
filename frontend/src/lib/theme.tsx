@@ -9,7 +9,8 @@ const storageKey = 'telc-prep-theme';
 function preferredTheme(): Theme {
   const stored = window.localStorage.getItem(storageKey);
   if (stored === 'light' || stored === 'dark') return stored;
-  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  // The learner workspace is intentionally dark-first, matching the focused exam-room feel.
+  return 'dark';
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {

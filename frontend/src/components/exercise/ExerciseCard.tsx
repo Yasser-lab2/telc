@@ -2,14 +2,16 @@ import { useState } from 'react';
 import type { Question } from '../../lib/api';
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
+import { useI18n } from '../../lib/i18n';
 
 export function ExerciseCard({ questions, onSubmit, isSubmitting = false }: { questions: Question[]; onSubmit?: (answers: Record<string, number>) => Promise<void>; isSubmitting?: boolean }) {
   const [answers, setAnswers] = useState<Record<string, number>>({});
   const [submitted, setSubmitted] = useState(false);
+  const { t, direction } = useI18n();
   const score = questions.reduce((total, question) => total + (answers[question.id] === question.answerIndex ? 1 : 0), 0);
 
   return (
-    <Card>
+    <Card dir={direction}>
       <div className="space-y-5">
         {questions.map((question) => (
           <div key={question.id} className="german rounded-md border border-border bg-white p-4" dir="ltr">
@@ -40,8 +42,8 @@ export function ExerciseCard({ questions, onSubmit, isSubmitting = false }: { qu
         <Button disabled={isSubmitting || Object.keys(answers).length !== questions.length} onClick={async () => {
           if (onSubmit) await onSubmit(answers);
           setSubmitted(true);
-        }}>{isSubmitting ? 'Enregistrement…' : 'Corriger'}</Button>
-        {submitted && <span className="font-semibold">Score: {score}/{questions.length}</span>}
+        }}>{isSubmitting ? t('saving') : t('correction')}</Button>
+        {submitted && <span className="font-semibold">{t('result')}: {score}/{questions.length}</span>}
       </div>
     </Card>
   );

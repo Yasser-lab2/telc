@@ -1,4 +1,4 @@
-import { and, desc, eq, gt, inArray } from 'drizzle-orm';
+import { and, desc, eq, gt } from 'drizzle-orm';
 import { getDb } from '../db';
 import { plans, subscriptions } from '../db/schema';
 
@@ -11,7 +11,7 @@ export async function getCurrentPlan(dbBinding: D1Database, userId: string) {
     .where(
       and(
         eq(subscriptions.userId, userId),
-        inArray(subscriptions.status, ['trial', 'active']),
+        eq(subscriptions.status, 'active'),
         gt(subscriptions.expiresAt, new Date()),
       ),
     )

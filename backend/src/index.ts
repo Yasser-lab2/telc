@@ -1,4 +1,4 @@
-import { and, eq, gt, inArray } from 'drizzle-orm';
+import { and, eq, gt } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { getDb } from './db';
@@ -79,7 +79,7 @@ app.get('/api/me', authMiddleware, async (c) => {
     .where(
       and(
         eq(subscriptions.userId, user.id),
-        inArray(subscriptions.status, ['trial', 'active']),
+        eq(subscriptions.status, 'active'),
         gt(subscriptions.expiresAt, new Date()),
       ),
     )

@@ -15,13 +15,14 @@ import {
 import { apiError } from '../lib/http';
 import { getCurrentPlan } from '../lib/subscriptions';
 import { authMiddleware } from '../middleware/auth';
+import { subscriptionMiddleware } from '../middleware/subscription';
 import type { Env } from '../types';
 import { ensureReadingCatalogItem } from '../lib/reading-catalog';
 import { syncProgressAfterCompletion } from '../lib/progress';
 import { recordMistakes } from '../lib/mistakes';
 
 const app = new Hono<Env>();
-app.use('*', authMiddleware);
+app.use('*', authMiddleware, subscriptionMiddleware);
 
 app.get('/exams', async (c) => {
   const user = c.get('user');

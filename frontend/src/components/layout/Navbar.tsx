@@ -1,12 +1,15 @@
 import { Link, NavLink } from 'react-router-dom';
 import { Button } from '../ui/Button';
 import { useAuth } from '../../hooks/useAuth';
+import { hasActiveSubscription } from '../../lib/api';
 import { useI18n } from '../../lib/i18n';
 import { ThemeToggle } from '../ui/ThemeToggle';
+import { LanguageSwitcher } from '../ui/LanguageSwitcher';
 
 export function Navbar() {
-  const { user, logout } = useAuth();
-  const { t } = useI18n();
+  const { user, subscription, logout } = useAuth();
+  const { t, direction } = useI18n();
+  const hasLearnerAccess = hasActiveSubscription(subscription);
   function focusMain(event: React.MouseEvent<HTMLAnchorElement>) {
     const main = document.querySelector('main');
     if (!main) return;
@@ -15,8 +18,8 @@ export function Navbar() {
     main.focus();
   }
   return (
-    <header className="top-navigation sticky top-0 z-30 border-b border-border/80 bg-bg/90 backdrop-blur-xl">
-      <a className="skip-link" href="#main-content" onClick={focusMain}>Aller au contenu principal</a>
+    <header dir={direction} className="top-navigation sticky top-0 z-30 border-b border-border/80 bg-bg/90 backdrop-blur-xl">
+      <a className="skip-link" href="#main-content" onClick={focusMain}>{t('skipToContent')}</a>
       <nav aria-label={t('navigation')} className="mx-auto flex min-h-16 max-w-7xl items-center justify-between gap-4 px-4 md:px-6">
         <Link to="/" className="flex items-center gap-3 text-ink">
           <span className="brand-mark">T</span>
@@ -26,12 +29,11 @@ export function Navbar() {
           <NavLink to="/pricing" className="nav-link hidden sm:inline-flex">
             {t('pricing')}
           </NavLink>
+          <LanguageSwitcher />
           <ThemeToggle />
           {user ? (
             <>
-              <NavLink to="/dashboard" className="nav-link">
-                {t('dashboard')}
-              </NavLink>
+              {hasLearnerAccess && <NavLink to="/dashboard" className="nav-link">{t('dashboard')}</NavLink>}
               <NavLink to="/dashboard/profile" className="nav-link">
                 {t('profile')}
               </NavLink>

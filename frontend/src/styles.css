@@ -251,3 +251,12 @@ html.dark a, html.dark button { text-underline-offset: 3px; }
     48px 48px,
     auto;
 }
+
+.heat-0 { background: rgb(255 255 255 / 0.06); }
+.heat-1 { background: rgb(99 102 241 / 0.28); }
+.heat-2 { background: rgb(99 102 241 / 0.58); }
+.heat-3 { background: linear-gradient(135deg, #6366f1, #22d3ee); box-shadow: 0 0 12px rgb(34 211 238 / 0.18); }
+.tone-amber { background: #f59e0b; }
+.tone-indigo { background: #818cf8; }
+.tone-cyan { background: #22d3ee; }
+.tone-emerald { background: #34d399; }

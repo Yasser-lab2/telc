@@ -1,4 +1,4 @@
-import { and, eq, gt, inArray } from 'drizzle-orm';
+import { and, eq, gt } from 'drizzle-orm';
 import type { MiddlewareHandler } from 'hono';
 import { getDb } from '../db';
 import { subscriptions } from '../db/schema';
@@ -14,7 +14,7 @@ export const subscriptionMiddleware: MiddlewareHandler<Env> = async (c, next) =>
     .where(
       and(
         eq(subscriptions.userId, user.id),
-        inArray(subscriptions.status, ['trial', 'active']),
+        eq(subscriptions.status, 'active'),
         gt(subscriptions.expiresAt, new Date()),
       ),
     )

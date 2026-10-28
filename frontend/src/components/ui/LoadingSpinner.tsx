@@ -1,3 +1,6 @@
+import { useI18n } from '../../lib/i18n';
+
 export function LoadingSpinner() {
-  return <div className="p-8 text-center text-muted">Chargement...</div>;
+  const { t } = useI18n();
+  return <div className="p-8 text-center text-muted">{t('loading')}</div>;
 }
