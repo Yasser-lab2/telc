@@ -90,7 +90,7 @@ export function Profile() {
   });
 
   return (
-    <div className="space-y-6" dir={direction}>
+    <div className="kk-legacy space-y-6" dir={direction}>
       <Card>
         <h1 className="text-2xl font-bold">{t('profileAndSecurity')}</h1>
         <form className="mt-5" onSubmit={saveProfile}>

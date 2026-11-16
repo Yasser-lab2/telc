@@ -1,10 +1,7 @@
 import { useMutation } from '@tanstack/react-query';
 import { useState, type FormEvent } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { Navbar } from '../components/layout/Navbar';
-import { Button } from '../components/ui/Button';
-import { Card } from '../components/ui/Card';
-import { Input } from '../components/ui/Input';
+import { AuthLayout } from '../components/landing/AuthLayout';
 import { apiClient } from '../lib/api';
 import { useI18n } from '../lib/i18n';
 
@@ -12,30 +9,28 @@ export function ResetPassword() {
   const [params] = useSearchParams();
   const token = params.get('token') ?? '';
   const [password, setPassword] = useState('');
-  const { direction, t } = useI18n();
+  const { t } = useI18n();
   const reset = useMutation({ mutationFn: () => apiClient.resetPassword(token, password) });
   function submit(event: FormEvent) { event.preventDefault(); reset.mutate(); }
   return (
-    <div className="app-canvas min-h-screen" dir={direction}>
-      <Navbar />
-      <main className="mx-auto max-w-md px-4 py-16">
-        <Card>
-          <h1 className="text-3xl font-black">{t('resetPassword')}</h1>
-          {reset.isSuccess ? (
-            <div className="mt-6">
-              <p className="text-sm text-muted">{t('passwordChanged')}</p>
-              <Link className="mt-4 inline-flex font-bold text-accent" to="/login">{t('signInButton')}</Link>
-            </div>
-          ) : (
-            <form className="mt-6 space-y-4" onSubmit={submit}>
-              <label className="text-sm font-bold">{t('password')}<Input className="mt-2" type="password" minLength={8} required value={password} onChange={(event) => setPassword(event.target.value)} /></label>
-              {!token && <p className="text-sm text-red-600">{t('invalidToken')}</p>}
-              {reset.error && <p className="text-sm text-red-600">{reset.error.message}</p>}
-              <Button className="w-full" disabled={!token || reset.isPending}>{reset.isPending ? t('saving') : t('changePassword')}</Button>
-            </form>
-          )}
-        </Card>
-      </main>
-    </div>
+    <AuthLayout eyebrow={t('accountSecurity')} title={t('resetPassword')}>
+      {reset.isSuccess ? (
+        <div className="kk-notice" role="status">
+          <p>{t('passwordChanged')}</p>
+          <Link className="kk-auth-link" to="/login">{t('signInButton')}</Link>
+        </div>
+      ) : (
+        <form onSubmit={submit}>
+          <div className="kk-field">
+            <label className="kk-label" htmlFor="reset-password">{t('password')}</label>
+            <input id="reset-password" className="kk-input" type="password" minLength={8} required autoComplete="new-password" placeholder={t('passwordMin')} value={password} aria-invalid={reset.error ? true : undefined} onChange={(event) => setPassword(event.target.value)} />
+          </div>
+          {!token && <p className="kk-error" role="alert">{t('invalidToken')}</p>}
+          {reset.error && <p className="kk-error" role="alert">{reset.error.message}</p>}
+          <button type="submit" className="kk-submit" disabled={!token || reset.isPending}>{reset.isPending ? t('saving') : t('changePassword')}</button>
+        </form>
+      )}
+      <p className="kk-auth-foot"><Link style={{ marginInlineStart: 0 }} to="/login">{t('backToLogin')}</Link></p>
+    </AuthLayout>
   );
 }

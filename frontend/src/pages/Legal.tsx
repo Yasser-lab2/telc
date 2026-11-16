@@ -1,6 +1,6 @@
 import { Link, useParams } from 'react-router-dom';
-import { Footer } from '../components/layout/Footer';
-import { Navbar } from '../components/layout/Navbar';
+import { LandingFooter, LandingHeader } from '../components/landing/LandingChrome';
+import '../components/landing/landing.css';
 import { useI18n, type Locale } from '../lib/i18n';
 
 type DocumentKey = 'privacy' | 'terms' | 'refunds';
@@ -81,9 +81,9 @@ export function Legal() {
   const key = (document in documents.fr ? document : 'terms') as DocumentKey;
   const page = documents[locale][key];
   return (
-    <div className="app-canvas min-h-screen" dir={direction}>
-      <Navbar />
-      <main id="main-content" tabIndex={-1} className="mx-auto max-w-4xl px-4 py-12 md:px-6 md:py-16">
+    <div className="kk kk-page kk-legacy" dir={direction}>
+      <LandingHeader showPricing />
+      <main id="main-content" tabIndex={-1} className="kk-wrap mx-auto max-w-4xl py-12 md:py-16" style={{ outline: 'none' }}>
         <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-accent">{t('legalInformation')}</p>
         <h1 className="mt-3 text-3xl font-black md:text-4xl">{page.title}</h1>
         <p className="mt-3 text-sm text-muted">{t('legalVersion')}</p>
@@ -96,7 +96,7 @@ export function Legal() {
           <a href="https://mcinet.gov.ma/fr/content/protection-consommateur/droits-garantis-aux-consommateurs" target="_blank" rel="noreferrer">{t('consumerRights')}</a>
         </div>
       </main>
-      <Footer />
+      <LandingFooter />
     </div>
   );
 }

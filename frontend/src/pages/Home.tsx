@@ -1,53 +1,117 @@
+import { Fragment, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { Footer } from '../components/layout/Footer';
-import { Navbar } from '../components/layout/Navbar';
-import { Button } from '../components/ui/Button';
+import { Icon, type IconName } from '../components/landing/icons';
+import { LandingFooter, LandingHeader } from '../components/landing/LandingChrome';
+import '../components/landing/landing.css';
 import { useI18n } from '../lib/i18n';
+
+/** Wraps the last word of a sentence in the highlighted italic span used by the Kolchi Klar headings. */
+function withHighlight(text: string): ReactNode {
+  const match = text.match(/^(.*\s)(\S+?)([.!?…]*)$/u);
+  if (!match) return text;
+  return <>{match[1]}<span className="kk-hl">{match[2]}</span>{match[3]}</>;
+}
 
 export function Home() {
   const { direction, t } = useI18n();
-  const modules = [
-    ['01', 'Lesen', t('moduleReadingBody')],
-    ['02', 'Hören', t('moduleListeningBody')],
-    ['03', 'Schreiben', t('moduleWritingBody')],
-    ['04', 'Sprechen', t('moduleSpeakingBody')],
+  const skills: Array<{ n: string; icon: IconName; title: string; tag: string; body: string; foot: string }> = [
+    { n: '01', icon: 'book', title: 'Lesen', tag: 'Teil 1–3', body: t('moduleReadingBody'), foot: t('skillReadingFoot') },
+    { n: '02', icon: 'headphones', title: 'Hören', tag: 'Audio', body: t('moduleListeningBody'), foot: t('skillListeningFoot') },
+    { n: '03', icon: 'pen', title: 'Schreiben', tag: 'Briefe & E-Mails', body: t('moduleWritingBody'), foot: t('skillWritingFoot') },
+    { n: '04', icon: 'mic', title: 'Sprechen', tag: 'Mündliche Prüfung', body: t('moduleSpeakingBody'), foot: t('skillSpeakingFoot') },
   ];
+  const points = [t('pointPrice'), t('pointSchedule'), t('pointExam')];
+
   return (
-    <div className="app-canvas min-h-screen" dir={direction}>
-      <Navbar />
-      <main id="main-content" tabIndex={-1}>
-        <section className="mx-auto grid max-w-7xl items-center gap-12 px-4 py-16 md:px-6 lg:grid-cols-[1.05fr_0.95fr] lg:py-24">
+    <div className="kk" dir={direction}>
+      <LandingHeader />
+      <main id="main-content" tabIndex={-1} style={{ outline: 'none' }}>
+        <section className="kk-wrap kk-hero">
           <div>
-            <span className="inline-flex rounded-full border border-cyan-300/20 bg-cyan-300/10 px-4 py-2 text-xs font-black tracking-[0.12em] text-cyan-100">{t('homeBadge')}</span>
-            <h1 className="mt-6 max-w-3xl text-4xl font-black leading-[1.12] tracking-tight text-white md:text-6xl">{t('homeHeroTitle')}</h1>
-            <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-300">{t('homeDescription')}</p>
-            <div className="mt-8 flex flex-wrap justify-start gap-3">
-              <Link to="/register"><Button className="min-h-12 bg-indigo-400 px-6 hover:bg-indigo-300">{t('startFreeTrial')}</Button></Link>
-              <Link to="/pricing"><Button className="min-h-12 border-white/10 bg-white/[0.04] px-6 text-white hover:bg-white/10" variant="secondary">{t('seePlans')}</Button></Link>
+            <span className="kk-pill"><span className="kk-dot" />{t('betaFree')}<span style={{ opacity: 0.5 }}>/</span><span style={{ fontWeight: 400, opacity: 0.8 }}>B1 &amp; B2</span></span>
+            <div className="kk-eyebrow mono">00 · {t('heroEyebrow')}</div>
+            <h1 className="kk-h1 serif">{withHighlight(t('homeHeroTitle'))}</h1>
+            <p className="kk-lead">{t('homeDescription')}</p>
+            <div className="kk-cta-row">
+              <Link to="/register" className="kk-cta">{t('register')}<Icon name="arrowRight" size={20} /></Link>
+              <span className="kk-tag mono">{t('modularTag')}</span>
             </div>
-            <p className="mt-5 text-sm font-semibold text-slate-500">{t('noAutomaticCharge')}</p>
+            <p className="kk-note">{t('homeBetaNote')}</p>
+            <div className="kk-stats">
+              <div><div className="kk-stat-v serif">{t('statPractice')}</div><div className="kk-stat-l">{t('statPracticeLabel')}</div></div>
+              <div><div className="kk-stat-v serif">4/4</div><div className="kk-stat-l">{t('statSkills')}</div></div>
+              <div><div className="kk-stat-v serif">{t('statInstant')}</div><div className="kk-stat-l">{t('statInstantLabel')}</div></div>
+            </div>
           </div>
 
-          <div className="rounded-[28px] border border-indigo-300/20 bg-gradient-to-br from-indigo-400/[0.14] to-[#10141d] p-5 shadow-2xl shadow-indigo-950/30 md:p-7">
-            <div className="flex items-center justify-between border-b border-white/10 pb-4"><div><p className="text-xs font-black uppercase tracking-[0.16em] text-amber-200">{t('homeAssistant')}</p><h2 className="german mt-1 text-left font-black text-white" dir="ltr">Schreiben · B1</h2></div><span className="rounded-full bg-amber-300/10 px-3 py-1 text-xs font-bold text-amber-100" dir={direction}>{t('minutes', { count: 30 })}</span></div>
-            <div className="german mt-5 rounded-2xl bg-black/25 p-5 text-slate-200" dir="ltr"><p className="text-sm font-bold text-slate-500">Aufgabe</p><p className="mt-3 leading-7">Sie möchten an einem Deutschkurs teilnehmen. Fragen Sie nach dem Preis, den Kurszeiten und der Prüfungsvorbereitung.</p></div>
-            <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.06] p-5"><p className="german text-sm leading-7 text-slate-300" dir="ltr">Sehr geehrte Damen und Herren,<br />ich interessiere mich für Ihren Deutschkurs…</p><div className="mt-5 flex items-center justify-between"><span className="text-xs font-bold text-slate-500">{t('savedDraftShort')}</span><span className="rounded-lg bg-amber-300/15 px-4 py-2 text-xs font-bold text-amber-100">{t('aiCorrection')}</span></div></div>
+          <div className="kk-card">
+            <div className="kk-card-bar top">
+              <span className="kk-card-title mono"><span className="kk-card-dot" />{t('homeAssistant')} / Schreiben · B1</span>
+              <span className="kk-chip mono"><Icon name="timer" size={13} />{t('minutes', { count: 30 })}</span>
+            </div>
+            <div className="kk-card-body">
+              <div className="kk-aufgabe german" dir="ltr">
+                <div className="kk-aufgabe-head" dir={direction}><span className="kk-aufgabe-badge mono">AUFGABE</span><span className="kk-aufgabe-sub">{t('officialTask')}</span></div>
+                <p>Sie möchten an einem Deutschkurs teilnehmen. Fragen Sie nach dem Preis, den Kurszeiten und der Prüfungsvorbereitung.</p>
+              </div>
+              <div className="kk-editor german">
+                <div dir="ltr">
+                  <p>Sehr geehrte Damen und Herren,</p>
+                  <p>ich interessiere mich für Ihren Deutschkurs<span className="kk-caret" /></p>
+                </div>
+                <div className="kk-editor-foot" dir={direction}>
+                  <span className="ok"><Icon name="checkCircle" size={16} />{t('structureOk')}</span>
+                  <span className="mono">{t('pointsToCover')}</span>
+                </div>
+              </div>
+              <div className="kk-points">
+                {points.map((label) => <div key={label} className="kk-point"><span>{label}</span><b className="mono">{t('pending')}</b></div>)}
+              </div>
+            </div>
+            <div className="kk-card-bar bottom">
+              <span className="kk-save mono"><i />{t('savedDraftShort')}</span>
+              <span className="kk-ai"><Icon name="wand" size={16} />{t('aiCorrection')}</span>
+            </div>
           </div>
         </section>
 
-        <section className="border-y border-white/10 bg-[#10141d]/60">
-          <div className="mx-auto max-w-7xl px-4 py-16 md:px-6">
-            <p className="text-xs font-black uppercase tracking-[0.18em] text-indigo-200">{t('clearPath')}</p>
-            <h2 className="mt-3 max-w-2xl text-3xl font-black tracking-tight text-white md:text-4xl">{t('skillFocus')}</h2>
-            <div className="mt-9 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-              {modules.map(([number, title, body]) => <article key={title} className="rounded-[22px] border border-white/10 bg-[#12151d]/90 p-6 shadow-xl shadow-black/15"><span className="text-sm font-black text-indigo-200">{number}</span><h3 className="german mt-8 text-2xl font-black text-white" dir="ltr">{title}</h3><p className="mt-3 text-sm leading-7 text-slate-400">{body}</p></article>)}
+        <section className="kk-band">
+          <div className="kk-wrap">
+            <span className="kk-section-eyebrow mono">{t('clearPath')}</span>
+            <h2 className="kk-h2 serif">{withHighlight(t('skillFocus'))}</h2>
+            <p className="kk-h2-sub">{t('skillFocusBody')}</p>
+            <div className="kk-grid4">
+              {skills.map((skill) => (
+                <article key={skill.title} className="kk-skill">
+                  <div>
+                    <div className="kk-skill-top"><span className="kk-skill-n mono">{skill.n}</span><span className="kk-skill-ico"><Icon name={skill.icon} size={22} /></span></div>
+                    <h3 className="german" dir="ltr">{skill.title}<small className="mono">{skill.tag}</small></h3>
+                    <p>{skill.body}</p>
+                  </div>
+                  <div className="kk-skill-foot mono"><span>{skill.foot}</span><Icon name="arrowRight" size={16} /></div>
+                </article>
+              ))}
+            </div>
+            <div className="kk-tip">
+              <span className="kk-tip-l"><Icon name="bulb" size={20} /><span><strong>{t('tipLabel')}</strong> {t('tipBody')}</span></span>
+              <Link to="/pricing">{t('learnMore')}<Icon name="chevronRight" size={16} /></Link>
             </div>
           </div>
         </section>
 
-         <section className="mx-auto max-w-7xl px-4 py-16 md:px-6"><div className="rounded-[28px] border border-cyan-300/15 bg-gradient-to-l from-cyan-300/[0.12] to-[#0b1020] px-6 py-10 text-center text-white md:px-12 md:py-14"><p className="text-xs font-black uppercase tracking-[0.2em] text-cyan-200">{t('homeCtaTitle')}</p><h2 className="mx-auto mt-4 max-w-2xl text-3xl font-black md:text-4xl">{t('homeCtaTitle')}</h2><p className="mx-auto mt-4 max-w-xl text-slate-300">{t('homeCtaBody')}</p><Link to="/register" className="mt-7 inline-flex min-h-12 items-center rounded-xl bg-white px-6 text-sm font-black text-slate-950">{t('registerNow')}</Link></div></section>
+        <section className="kk-wrap kk-final">
+          <div className="kk-final-in">
+            <span className="kk-badge mono">{t('homeCtaTitle')}</span>
+            <h2 className="kk-h2 serif">{withHighlight(t('homeCtaTitle'))}</h2>
+            <p className="kk-lead">{t('homeCtaBody')}</p>
+            <Link to="/register" className="kk-cta" style={{ paddingInline: '2.5rem' }}>{t('registerNow')}<Icon name="arrowRight" size={20} /></Link>
+            <div className="kk-checks mono">
+              {[t('checkNoCard'), t('checkMethod'), t('checkRegion')].map((label) => <Fragment key={label}><span><Icon name="check" size={16} />{label}</span></Fragment>)}
+            </div>
+          </div>
+        </section>
       </main>
-      <Footer />
+      <LandingFooter />
     </div>
   );
 }

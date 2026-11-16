@@ -3,6 +3,7 @@ import type { Dispatch, SetStateAction } from 'react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { apiClient, type ReadingOption, type ReadingQuestion, type ReadingSection, type ReadingSubmitResult } from '../lib/api';
+import '../components/landing/landing.css';
 import { useI18n } from '../lib/i18n';
 
 const tabs = [
@@ -174,8 +175,8 @@ export function LesenExercise() {
     }
   }, [result, secondsRemaining, sessionId, submit.isPending]);
 
-  if (exam.isLoading) return <p className="text-slate-400">{t('loading')}</p>;
-  if (!exam.data) return <p className="text-red-300">{t('modelNotFound')}</p>;
+  if (exam.isLoading) return <p className="kk-panel-body">{t('loading')}</p>;
+  if (!exam.data) return <p className="kk-error">{t('modelNotFound')}</p>;
 
   const selectScope = (scope: PracticeScope) => {
     setActiveTab(isCompleteExam && scope === 'all' ? 'teil1' : scope);
@@ -185,7 +186,7 @@ export function LesenExercise() {
   const isLastSection = activeSectionIndex === sectionOrder.length - 1;
 
   return (
-    <div className="space-y-6" dir={direction}>
+    <div className="kk-ex space-y-6" dir={direction}>
       <Link to="/dashboard/lesen" className="inline-flex min-h-11 items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm font-bold text-slate-300 transition hover:border-indigo-300/30 hover:bg-white/[0.08] hover:text-white" aria-label={t('backToReading')}>
         <span aria-hidden="true">→</span> {t('backToReading')}
       </Link>
@@ -214,7 +215,7 @@ export function LesenExercise() {
             type="button"
             onClick={() => start.mutate(scopeForStart)}
             disabled={start.isPending || Boolean(sessionId)}
-            className="min-h-11 rounded-2xl border border-teal-300/30 bg-teal-300/10 px-5 text-sm font-black text-teal-100 transition hover:bg-teal-300/20 disabled:opacity-50"
+            className="min-h-11 kk-ex-primary rounded-2xl border border-teal-300/30 bg-teal-300/10 px-5 text-sm font-black text-teal-100 transition hover:bg-teal-300/20 disabled:opacity-50"
             dir={direction}
           >
              {sessionId ? t('solvedSession') : t('begin')}
@@ -291,7 +292,7 @@ export function LesenExercise() {
               <button
                 type="button"
                 onClick={() => selectScope(nextSectionCode)}
-                className="min-h-11 rounded-2xl border border-teal-300/30 bg-teal-300/10 px-5 text-sm font-black text-teal-100 hover:bg-teal-300/20"
+                className="min-h-11 kk-ex-primary rounded-2xl border border-teal-300/30 bg-teal-300/10 px-5 text-sm font-black text-teal-100 hover:bg-teal-300/20"
               >
                  <bdi dir="ltr">{t('continueTo', { section: sectionMeta[nextSectionCode].label })}</bdi>
               </button>
@@ -319,7 +320,7 @@ export function LesenExercise() {
                   if (window.confirm(t('submitConfirm'))) submit.mutate();
               }}
               disabled={submit.isPending || !sessionId || (sessionScope === 'all' && !isLastSection)}
-              className="min-h-11 rounded-2xl border border-teal-300/30 bg-teal-300/10 px-5 text-sm font-black text-teal-100 hover:bg-teal-300/20 disabled:opacity-50"
+              className="min-h-11 kk-ex-primary rounded-2xl border border-teal-300/30 bg-teal-300/10 px-5 text-sm font-black text-teal-100 hover:bg-teal-300/20 disabled:opacity-50"
             >
                 {submit.isPending ? t('submitting') : t('submitReview')}
             </button>
