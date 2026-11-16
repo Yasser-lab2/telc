@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { AudioPlayer } from '../components/exercise/AudioPlayer';
-import { Card } from '../components/ui/Card';
+import '../components/landing/landing.css';
 import { apiClient } from '../lib/api';
 import { useI18n } from '../lib/i18n';
 import { formatDate } from '../lib/utils';
@@ -66,7 +66,7 @@ export function HorenExercise() {
     },
   });
 
-  if (!audio.data) return <p>{t('loading')}</p>;
+  if (!audio.data) return <p className="kk-panel-body">{t('loading')}</p>;
   const remainingPlays = Math.max(0, audio.data.audio.maxPlays - playCount);
   const answered = Object.keys(answers).length;
 
@@ -75,15 +75,89 @@ export function HorenExercise() {
     await ensureAttempt();
   }
 
-  return <div className="space-y-5" dir={direction}>
-      <div><p className="text-xs font-extrabold uppercase tracking-[0.18em] text-accent" dir="ltr">Hören · {audio.data.audio.niveau}</p><h1 className="german mt-2 text-3xl font-black text-ink" dir="ltr">{audio.data.audio.title}</h1></div>
-    <Card><AudioPlayer src={audio.data.audio.audioUrl} remainingPlays={remainingPlays} onAuthorizePlay={() => play.mutateAsync().then(() => undefined)} />{play.error && <p className="mt-3 text-sm text-red-600">{play.error.message}</p>}</Card>
-    <Card>
-      <div className="mb-5 flex items-center justify-between gap-3"><p className="text-sm font-bold text-ink">{t('listeningQuestionsAnswered', { answered, total: audio.data.audio.questions.length })}</p><span aria-live="polite" className={`text-xs font-bold ${saveStatus === 'error' ? 'text-red-600' : 'text-muted'}`}>{saveStatus === 'saving' ? t('saving') : saveStatus === 'saved' ? t('answersSaved') : saveStatus === 'error' ? t('saveFailed') : ''}</span></div>
-      <div className="space-y-5">{audio.data.audio.questions.map((question) => { const correction = result?.corrections.find((item) => item.questionId === question.id); return <div key={question.id} className="rounded-xl border border-border bg-bg/50 p-4 text-left" dir="ltr"><div className="flex items-start justify-between gap-3"><p className="german font-bold text-ink" dir="ltr">{question.prompt}</p>{correction && <span dir="ltr" className={`rounded-full px-3 py-1 text-xs font-black ${correction.isCorrect ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>{correction.isCorrect ? <bdi dir={direction}>{t('correct')}</bdi> : <><bdi dir={direction}>{t('answer')}</bdi>: <bdi dir="ltr">{correction.correctOptionCode}</bdi></>}</span>}</div><div className="mt-3 grid gap-2 sm:grid-cols-3">{question.options.map((option) => <button key={option.code} type="button" disabled={Boolean(result)} onClick={() => setAnswers((current) => ({ ...current, [question.id]: option.code }))} className={`rounded-xl border px-3 py-3 text-left text-sm ${answers[question.id] === option.code ? 'border-accent bg-accentSoft text-ink' : 'border-border bg-white text-muted'}`}><span className="font-black">{option.code}</span> · <span dir="ltr">{option.label}</span></button>)}</div>{correction && <p className="mt-3 rounded-lg bg-white p-3 text-sm text-muted" dir="ltr">{!correction.selectedOptionCode && <bdi dir={direction} className="font-bold text-amber-700">{t('noAnswer')} </bdi>}<bdi dir="ltr">{correction.explanation ?? t('noExtraExplanation')}</bdi></p>}</div>; })}</div>
-      {(submit.error || save.error) && <p className="mt-4 text-sm text-red-600">{submit.error?.message ?? save.error?.message}</p>}
-      {!result ? <button type="button" disabled={submit.isPending} onClick={() => { const missing = audio.data.audio.questions.length - answered; if (missing > 0 && !window.confirm(`${missing} ${t('noAnswer')} ${t('submitAndCorrect').toLowerCase()} ?`)) return; submit.mutate(); }} className="mt-5 min-h-11 rounded-xl bg-accent px-5 text-sm font-black text-white disabled:opacity-50">{submit.isPending ? t('correction') : t('submitAndCorrect')}</button> : <div className="mt-6 border-t border-border pt-5"><h2 className="text-2xl font-black text-ink" dir="ltr"><bdi dir={direction}>{t('result')}</bdi>: {result.score}/{result.scoreMax} · {result.percentage}%</h2><div className="german mt-4 rounded-xl bg-bg p-4" dir="ltr"><p className="text-xs font-black uppercase text-muted" dir={direction}>{t('transcript')}</p><p className="mt-2 leading-7 text-ink">{result.transcript}</p></div><div className="mt-4 flex flex-wrap gap-3"><button type="button" onClick={() => void retry()} className="min-h-11 rounded-xl bg-ink px-5 text-sm font-black text-white">{t('retry')}</button><Link to="/dashboard/horen" className="inline-flex min-h-11 items-center rounded-xl border border-border px-5 text-sm font-bold text-ink">{t('returnExercises')}</Link></div></div>}
-   </Card>
-     {history.data?.history.length ? <Card><h2 className="text-xl font-black text-ink">{t('historyTitle')}</h2><div className="mt-4 space-y-2">{history.data.history.slice(0, 5).map((item) => <div key={item.id} className="flex items-center justify-between rounded-xl border border-border p-3"><span className="text-sm text-muted">{formatDate(item.submittedAt, locale)}</span><span className="font-black text-accent">{Math.round(item.percentage)}%</span></div>)}</div></Card> : null}
-  </div>;
+  return (
+    <div className="kk-dash" dir={direction}>
+      <section className="kk-welcome kk-welcome-col">
+        <p className="kk-cap" dir="ltr">Hören · {audio.data.audio.niveau}</p>
+        <h1 className="kk-welcome-title kk-lesen-title kk-title-md serif" dir="ltr">{audio.data.audio.title}</h1>
+      </section>
+
+      <section className="kk-panel">
+        <AudioPlayer src={audio.data.audio.audioUrl} remainingPlays={remainingPlays} onAuthorizePlay={() => play.mutateAsync().then(() => undefined)} />
+        {play.error && <p className="kk-error" role="alert">{play.error.message}</p>}
+      </section>
+
+      <section className="kk-panel">
+        <div className="kk-panel-head">
+          <p className="kk-cap">{t('listeningQuestionsAnswered', { answered, total: audio.data.audio.questions.length })}</p>
+          <span aria-live="polite" className={saveStatus === 'error' ? 'kk-save-status is-error' : 'kk-save-status'}>{saveStatus === 'saving' ? t('saving') : saveStatus === 'saved' ? t('answersSaved') : saveStatus === 'error' ? t('saveFailed') : ''}</span>
+        </div>
+        <div className="kk-qlist">
+          {audio.data.audio.questions.map((question) => {
+            const correction = result?.corrections.find((item) => item.questionId === question.id);
+            return (
+              <div key={question.id} className="kk-q" dir="ltr">
+                <div className="kk-q-top">
+                  <p className="kk-q-text german" dir="ltr">{question.prompt}</p>
+                  {correction && (
+                    <span dir="ltr" className={correction.isCorrect ? 'kk-badge-s is-ok' : 'kk-badge-s is-bad'}>
+                      {correction.isCorrect ? <bdi dir={direction}>{t('correct')}</bdi> : <><bdi dir={direction}>{t('answer')}</bdi>: <bdi dir="ltr">{correction.correctOptionCode}</bdi></>}
+                    </span>
+                  )}
+                </div>
+                <div className="kk-opts">
+                  {question.options.map((option) => (
+                    <button key={option.code} type="button" disabled={Boolean(result)} aria-pressed={answers[question.id] === option.code} className={answers[question.id] === option.code ? 'kk-opt is-on' : 'kk-opt'} onClick={() => setAnswers((current) => ({ ...current, [question.id]: option.code }))}>
+                      <span className="kk-opt-code">{option.code}</span> · <span dir="ltr">{option.label}</span>
+                    </button>
+                  ))}
+                </div>
+                {correction && (
+                  <p className="kk-q-exp" dir="ltr">
+                    {!correction.selectedOptionCode && <bdi dir={direction} className="kk-warn-text">{t('noAnswer')} </bdi>}
+                    <bdi dir="ltr">{correction.explanation ?? t('noExtraExplanation')}</bdi>
+                  </p>
+                )}
+              </div>
+            );
+          })}
+        </div>
+        {(submit.error || save.error) && <p className="kk-error" role="alert">{submit.error?.message ?? save.error?.message}</p>}
+        {!result ? (
+          <button
+            type="button"
+            className="kk-cta kk-cta-inline"
+            disabled={submit.isPending}
+            onClick={() => {
+              const missing = audio.data.audio.questions.length - answered;
+              if (missing > 0 && !window.confirm(`${missing} ${t('noAnswer')} ${t('submitAndCorrect').toLowerCase()} ?`)) return;
+              submit.mutate();
+            }}
+          >
+            {submit.isPending ? t('correction') : t('submitAndCorrect')}
+          </button>
+        ) : (
+          <div className="kk-result">
+            <h2 className="kk-panel-title serif kk-big" dir="ltr"><bdi dir={direction}>{t('result')}</bdi>: {result.score}/{result.scoreMax} · {result.percentage}%</h2>
+            <div className="kk-transcript german" dir="ltr"><p className="kk-cap" dir={direction}>{t('transcript')}</p><p>{result.transcript}</p></div>
+            <div className="kk-row-actions">
+              <button type="button" className="kk-cta kk-cta-inline" onClick={() => void retry()}>{t('retry')}</button>
+              <Link to="/dashboard/horen" className="kk-ghost-btn">{t('returnExercises')}</Link>
+            </div>
+          </div>
+        )}
+      </section>
+
+      {history.data?.history.length ? (
+        <section className="kk-panel">
+          <h2 className="kk-panel-title serif">{t('historyTitle')}</h2>
+          <div className="kk-qlist">
+            {history.data.history.slice(0, 5).map((item) => (
+              <div key={item.id} className="kk-hist"><span>{formatDate(item.submittedAt, locale)}</span><strong>{Math.round(item.percentage)}%</strong></div>
+            ))}
+          </div>
+        </section>
+      ) : null}
+    </div>
+  );
 }

@@ -1,6 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { Navbar } from '../components/layout/Navbar';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { apiClient } from '../lib/api';
@@ -13,9 +12,8 @@ export function Payment() {
   const payments = useQuery({ queryKey: ['my-payments'], queryFn: apiClient.myPayments });
   const upload = useMutation({ mutationFn: ({ id, file }: { id: string; file: File }) => apiClient.uploadPaymentProof(id, file), onSuccess: () => queryClient.invalidateQueries({ queryKey: ['my-payments'] }) });
   return (
-    <div className="app-canvas min-h-screen bg-bg" dir={direction}>
-      <Navbar />
-      <main id="main-content" tabIndex={-1} className="mx-auto max-w-4xl px-4 py-12">
+    <div className="kk-legacy mx-auto max-w-4xl" dir={direction}>
+      <div>
         <h1 className="text-3xl font-bold">{t('manualPayment')}</h1>
         <p className="mt-2 text-muted">{t('paymentHelp')}</p>
         <Link to="/pricing" className="mt-5 inline-block">
@@ -40,7 +38,7 @@ export function Payment() {
           </div>
           {upload.error && <p className="mt-3 text-sm text-red-600">{upload.error.message}</p>}
         </Card>
-      </main>
+      </div>
     </div>
   );
 }

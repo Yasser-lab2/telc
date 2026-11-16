@@ -1,9 +1,8 @@
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { Link, useNavigate } from 'react-router-dom';
-import { Footer } from '../components/layout/Footer';
-import { Navbar } from '../components/layout/Navbar';
-import { Button } from '../components/ui/Button';
-import { Card } from '../components/ui/Card';
+import { Icon } from '../components/landing/icons';
+import { LandingFooter, LandingHeader } from '../components/landing/LandingChrome';
+import '../components/landing/landing.css';
 import { apiClient, type Plan } from '../lib/api';
 import { formatMad } from '../lib/utils';
 import { useAuth } from '../hooks/useAuth';
@@ -20,43 +19,71 @@ export function Pricing() {
       window.location.href = data.whatsappUrl;
     },
   });
+  const steps = [
+    [t('chooseOfferStep'), t('chooseOfferHelp')],
+    [t('transferStep'), t('transferHelp')],
+    [t('accessStep'), t('accessHelp')],
+  ];
 
   return (
-    <div className="app-canvas min-h-screen" dir={direction}>
-      <Navbar />
-      <main id="main-content" tabIndex={-1} className="mx-auto max-w-7xl px-4 py-16 md:px-6">
-        <div className="max-w-2xl"><p className="text-xs font-extrabold uppercase tracking-[0.18em] text-accent">{t('pricingIntro')}</p><h1 className="mt-3 text-4xl font-black tracking-tight text-ink md:text-5xl">{t('pricingTitle')}</h1><p className="mt-4 text-lg leading-8 text-muted">{t('pricingDescription')}</p></div>
-        <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {plans.data?.plans.map((plan: Plan) => (
-            <Card key={plan.id} className={`flex flex-col ${plan.id !== 'trial' ? 'hover:border-accent/40' : 'bg-bg/70'}`}>
-              <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-accent">{plan.id === 'trial' ? t('discovery') : t('daysLabel', { count: plan.durationDays })}</p>
-              <h2 className="mt-3 text-xl font-black text-ink">{plan.name}</h2>
-              <p className="mt-5 text-3xl font-black text-ink">{formatMad(plan.priceMad, locale)}</p>
-              <div className="mt-5 space-y-3 border-t border-border pt-5 text-sm text-muted"><p>✓ {t('accessModules')}</p><p>✓ {t('dailyAi', { count: plan.aiCreditsPerDay })}</p><p>✓ {t('subscriptionTracking')}</p></div>
-              <Button
-                className="mt-7 w-full"
-                disabled={plan.id === 'trial' || createPayment.isPending}
-                onClick={() => {
-                  if (!user) {
-                    navigate('/login');
-                    return;
-                  }
-                  createPayment.mutate(plan.id);
-                }}
-              >
-                {plan.id === 'trial' ? t('includedAtSignup') : t('chooseOffer')}
-              </Button>
-            </Card>
-          ))}
+    <div className="kk kk-page" dir={direction}>
+      <LandingHeader active="pricing" showPricing />
+      <main id="main-content" tabIndex={-1} className="kk-wrap kk-pricing" style={{ outline: 'none' }}>
+        <div className="kk-pricing-intro">
+          <span className="kk-section-eyebrow mono">{t('pricingIntro')}</span>
+          <h1 className="kk-h2 serif">{t('pricingTitle')}</h1>
+          <p className="kk-h2-sub">{t('pricingDescription')}</p>
         </div>
+
+        <div className="kk-plans">
+          {plans.data?.plans.map((plan: Plan) => {
+            const trial = plan.id === 'trial';
+            return (
+              <article key={plan.id} className={trial ? 'kk-plan kk-plan-trial' : 'kk-plan'}>
+                <span className="kk-plan-tag mono">{trial ? t('discovery') : t('daysLabel', { count: plan.durationDays })}</span>
+                <h2 className="kk-plan-name">{plan.name}</h2>
+                <p className="kk-plan-price serif">{formatMad(plan.priceMad, locale)}</p>
+                <ul className="kk-plan-list">
+                  {[t('accessModules'), t('dailyAi', { count: plan.aiCreditsPerDay }), t('subscriptionTracking')].map((line) => (
+                    <li key={line}><Icon name="check" size={16} /><span>{line}</span></li>
+                  ))}
+                </ul>
+                <button
+                  type="button"
+                  className={trial ? 'kk-plan-btn kk-plan-btn-off' : 'kk-cta kk-plan-btn'}
+                  disabled={trial || createPayment.isPending}
+                  onClick={() => {
+                    if (!user) {
+                      navigate('/login');
+                      return;
+                    }
+                    createPayment.mutate(plan.id);
+                  }}
+                >
+                  {trial ? t('includedAtSignup') : t('chooseOffer')}
+                </button>
+              </article>
+            );
+          })}
+        </div>
+
         {!user && (
-          <p className="mt-8 text-sm text-muted">
-            {t('alreadyDecided')} <Link className="font-semibold text-accent" to="/register">{t('createAccountButton')}</Link> {t('createThenChoose')}
+          <p className="kk-pricing-note">
+            {t('alreadyDecided')} <Link className="kk-auth-link" to="/register">{t('createAccountButton')}</Link> {t('createThenChoose')}
           </p>
         )}
-        <section className="mt-12 grid gap-4 rounded-2xl border border-border bg-surface p-6 md:grid-cols-3"><div><p className="font-black text-ink">1. {t('chooseOfferStep')}</p><p className="mt-2 text-sm text-muted">{t('chooseOfferHelp')}</p></div><div><p className="font-black text-ink">2. {t('transferStep')}</p><p className="mt-2 text-sm text-muted">{t('transferHelp')}</p></div><div><p className="font-black text-ink">3. {t('accessStep')}</p><p className="mt-2 text-sm text-muted">{t('accessHelp')}</p></div></section>
+
+        <section className="kk-steps" aria-label={t('pricingTitle')}>
+          {steps.map(([title, body], index) => (
+            <div key={title} className="kk-step">
+              <span className="kk-step-n mono">0{index + 1}</span>
+              <p className="kk-step-t">{title}</p>
+              <p className="kk-step-b">{body}</p>
+            </div>
+          ))}
+        </section>
       </main>
-      <Footer />
+      <LandingFooter />
     </div>
   );
 }

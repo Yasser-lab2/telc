@@ -51,12 +51,12 @@ export const router = createBrowserRouter([
   { path: '/verify-email', element: <VerifyEmail /> },
   { path: '/legal/:document', element: <Legal /> },
   {
-    path: '/payment',
     element: (
       <ProtectedRoute>
-        <Payment />
+        <DashboardLayout />
       </ProtectedRoute>
     ),
+    children: [{ path: '/payment', element: <Payment /> }],
   },
   {
     path: '/dashboard',
@@ -80,11 +80,11 @@ export const router = createBrowserRouter([
     ],
   },
   {
-    path: '/admin',
     element: (
       <AdminRoute>
-        <Admin />
+        <DashboardLayout />
       </AdminRoute>
     ),
+    children: [{ path: '/admin', element: <Admin /> }],
   },
 ]);

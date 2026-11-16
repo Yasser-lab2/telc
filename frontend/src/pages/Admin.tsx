@@ -4,7 +4,6 @@ import { PendingPayments } from '../components/admin/PendingPayments';
 import { ReadingExamManager } from '../components/admin/ReadingExamManager';
 import { LearningContentManager } from '../components/admin/LearningContentManager';
 import { UsersTable } from '../components/admin/UsersTable';
-import { Navbar } from '../components/layout/Navbar';
 import { Card } from '../components/ui/Card';
 import { apiClient } from '../lib/api';
 import { useAuth } from '../hooks/useAuth';
@@ -28,9 +27,8 @@ export function Admin() {
   const stats = useQuery({ queryKey: ['admin-stats'], queryFn: apiClient.adminStats, enabled: can('analytics.view') });
   const metrics = stats.data;
   return (
-    <div className="app-canvas min-h-screen bg-bg" dir={direction}>
-      <Navbar />
-      <main id="main-content" tabIndex={-1} className="mx-auto max-w-6xl px-4 py-8">
+    <div className="kk-legacy" dir={direction}>
+      <div>
         <h1 className="text-3xl font-bold">{t('adminTitle')}</h1>
         {can('analytics.view') && <div className="mt-6 space-y-6">
           {stats.isLoading && <Card><p className="text-sm text-muted">{t('metricsLoading')}</p></Card>}
@@ -54,7 +52,7 @@ export function Admin() {
         <div className="mt-6 space-y-6">
           {activeTab === 'payments' ? <>{can('payments.review') && <PendingPayments />}{can('users.view') && <UsersTable />}</> : activeTab === 'reading' ? <ReadingExamManager /> : activeTab === 'content' ? <LearningContentManager /> : activeTab === 'speaking' ? <><SpeakingReviewQueue /><SpeakingManager /></> : <SimulationManager />}
         </div>
-      </main>
+      </div>
     </div>
   );
 }
